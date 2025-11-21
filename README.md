@@ -1,4 +1,6 @@
--- AdminAllInOne.lua (LocalScript) - Full Version with All Features
+
+
+-- AdminAllInOne.lua v3.0 - AUTO LEVEL FARM ENHANCED!
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -10,6 +12,31 @@ local player = Players.LocalPlayer
 -- =================== Settings ===================
 local programRunning = true
 local livesFolderName = "Lives"
+
+-- =================== Auto Level Farm Database (FIXED!) ===================
+local levelFarmData = {
+    {level = 1, maxLevel = 4, monster = "Lost Rider Lv.1"},
+    {level = 5, maxLevel = 6, monster = "Armed Lost Rider Lv.5"},
+    {level = 7, maxLevel = 9, monster = "Dragon User Lv.7"},
+    {level = 10, maxLevel = 11, monster = "Crab User Lv.10"},
+    {level = 12, maxLevel = 14, monster = "Bat User Lv.12"},
+    {level = 15, maxLevel = 15, monster = "Bull User Lv.15"},
+    {level = 16, maxLevel = 19, monster = "Foundation Soldier Lv.16"},
+    {level = 20, maxLevel = 24, monster = "Cobra User Lv.20"},
+    {level = 25, maxLevel = 29, monster = "Manta User Lv.25"},
+    {level = 30, maxLevel = 34, monster = "Swan User Lv.30"},
+    {level = 35, maxLevel = 39, monster = "Zebra Monster Lv.35"},
+    {level = 40, maxLevel = 44, monster = "Dark Dragon User Lv.40"},
+    {level = 45, maxLevel = 49, monster = "Gazelle User Lv.45"},
+    {level = 50, maxLevel = 54, monster = "Violent Dragoon Lv.50"},
+    {level = 55, maxLevel = 59, monster = "Shark Overloaded Lv.55"},
+    {level = 60, maxLevel = 63, monster = "Shark User Lv.60"},
+    {level = 64, maxLevel = 69, monster = "Foundation Soldier Lv.64"},
+    {level = 70, maxLevel = 74, monster = "Timeless Goon Lv.70"},
+    {level = 75, maxLevel = 79, monster = "Captain Goon Lv.75"},
+    {level = 80, maxLevel = 999, monster = "STOP"} -- หยุดที่เลเวล 80
+}
+
 local targetMonsters = {
     "Lost Rider Lv.1","Armed Lost Rider Lv.5","Dragon User Lv.7",
     "Crab User Lv.10","Bat User Lv.12","Bull User Lv.15",
@@ -25,6 +52,7 @@ for _, m in ipairs(targetMonsters) do selectedMonsters[m] = true end
 
 local state = {
     autoFarm=false, autoFarmInterval=0.1,
+    autoLevelFarm=false, -- ระบบฟามตามเลเวลอัตโนมัติ (NEW!)
     lockPos=false,
     afkEnabled=false,
     autoBoss=false,
@@ -53,6 +81,28 @@ local questDatabase = {
         icon = "⚔️"
     },
     {
+        id = "quest_bullet_metal",
+        name = "The Bullet & Metal",
+        npcName = "ElementalResearcher",
+        npcPath = {"NPC", "ElementalResearcher"},
+        dialogueSteps = {"Hello!", "Yes, show me what you have", "The Bullet and Metal", "Start 'The Bullet and Metal'"},
+        monsters = {"Metal Man Lv.55", "Bullet Man Lv.55"},
+        questUIName = "The Bullet & Metal",
+        questType = "kill",
+        icon = "🔫"
+    },
+    {
+        id = "quest_fire_luna",
+        name = "The Fire & Luna",
+        npcName = "ElementalResearcher",
+        npcPath = {"NPC", "ElementalResearcher"},
+        dialogueSteps = {"Hello!", "Yes, show me what you have", "The Fire and Luna", "Start 'The Fire and Luna'"},
+        monsters = {"Luna Girl Lv.55", "Flare Man Lv.55"},
+        questUIName = "The Fire & Luna",
+        questType = "kill",
+        icon = "🔥"
+    },
+    {
         id = "quest_agito",
         name = "Agito's Rules",
         npcName = "Shoichi",
@@ -64,6 +114,23 @@ local questDatabase = {
         summonKey = "E",
         bossName = "Agito Lv.90",
         icon = "👹"
+    },
+    {
+        id = "quest_ancient",
+        name = "Ancient Argument",
+        npcName = "DojoStudent",
+        npcPath = {"NPC", "DojoStudent"},
+        dialogueSteps = {"Sure..", "Ancient Argument", "Start 'Ancient Argument'"},
+        questUIName = "Ancient Argument",
+        questType = "ancient_dungeon",
+        dungeonName = "Trial of Ancient",
+        stonePositions = {
+            {name = "หินที่ 1", cframe = CFrame.new(-2769.3479, 2.254, -1455.29102)},
+            {name = "หินที่ 2", cframe = CFrame.new(-2878.06396, 2.254, -1304.30896)},
+            {name = "หินที่ 3", cframe = CFrame.new(-2977.73804, 2.254, -1399.21997)}
+        },
+        bossNames = {"Daguba Lv.90", "Mighty Rider Lv.90", "Empowered Daguba Lv.90"},
+        icon = "🏛️"
     }
 }
 
@@ -81,6 +148,90 @@ end)
 -- =================== Helper Functions ===================
 local function getChar() return player.Character or player.CharacterAdded:Wait() end
 local function getHRP() return getChar():FindFirstChild("HumanoidRootPart") end
+
+-- =================== Get Player Level (FIXED!) ===================
+local function getPlayerLevel()
+    local success, level = pcall(function()
+        local stats = player:FindFirstChild("StatsReplicated")
+        if stats then
+            local levelValue = stats:FindFirstChild("Level")
+            if levelValue then
+                return levelValue.Value
+            end
+        end
+        return 1
+    end)
+    
+    if success and level and level > 0 then
+        return level
+    else
+        print("⚠️ [Level] ไม่สามารถอ่านเลเวลได้ - ใช้ค่าเริ่มต้น 1")
+        return 1
+    end
+end
+
+-- =================== Get Target Monster by Level ===================
+local function getTargetMonsterByLevel(level)
+    for _, data in ipairs(levelFarmData) do
+        if level >= data.level and level <= data.maxLevel then
+            return data.monster
+        end
+    end
+    return nil
+end
+
+-- =================== Find Monster in Workspace ===================
+local function findMonsterByName(monsterName)
+    local livesFolder = workspace:FindFirstChild(livesFolderName)
+    if not livesFolder then return nil end
+    
+    for _, mob in ipairs(livesFolder:GetChildren()) do
+        if mob.Name == monsterName and mob:FindFirstChild("HumanoidRootPart") and mob:FindFirstChild("Humanoid") then
+            if mob.Humanoid.Health > 0 then
+                return mob
+            end
+        end
+    end
+    return nil
+end
+
+-- =================== Smart Teleport (วาร์ปไกลได้!) ===================
+local function smartTeleport(targetCFrame)
+    local hrp = getHRP()
+    if not hrp or not targetCFrame then 
+        return false 
+    end
+    
+    local char = getChar()
+    
+    -- ปิด Collision ก่อนวาร์ป
+    for _, part in pairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+    
+    -- วาร์ปหลายครั้งเพื่อความแม่นยำ
+    for i = 1, 10 do
+        pcall(function()
+            hrp.CFrame = targetCFrame
+            hrp.Velocity = Vector3.new(0, 0, 0)
+            hrp.RotVelocity = Vector3.new(0, 0, 0)
+        end)
+        wait(0.03)
+    end
+    
+    wait(0.2)
+    
+    -- เปิด Collision กลับ
+    for _, part in pairs(char:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "Head" then
+            part.CanCollide = true
+        end
+    end
+    
+    return true
+end
 
 local function getNearbyMonsters()
     local mobs = {}
@@ -176,15 +327,17 @@ local function submitQuest(questData, npc)
     pcall(function()
         clickNPC(npc)
         wait(0.5)
-        if questData.dialogueSteps then
-            for i, step in ipairs(questData.dialogueSteps) do
-                local args = {{Choice = step}}
-                ReplicatedStorage:WaitForChild("Remote"):WaitForChild("Event"):WaitForChild("Dialogue"):FireServer(unpack(args))
-                wait(0.5)
-            end
-        end
-        local args = {{Exit = true}}
+        
+        print("📬 [Submit] กำลังส่งเควส...")
+        local args = {{Choice = "Yes, I've completed it."}}
         ReplicatedStorage:WaitForChild("Remote"):WaitForChild("Event"):WaitForChild("Dialogue"):FireServer(unpack(args))
+        wait(1)
+        
+        local exitArgs = {{Exit = true}}
+        ReplicatedStorage:WaitForChild("Remote"):WaitForChild("Event"):WaitForChild("Dialogue"):FireServer(unpack(exitArgs))
+        wait(0.5)
+        
+        print("✅ [Submit] ส่งสัญญาณส่งเควสแล้ว!")
     end)
 end
 
@@ -223,7 +376,6 @@ local function pressSummonKey(key)
     end)
 end
 
--- =================== Force Teleport Function ===================
 local function forceTP(targetCFrame)
     local hrp = getHRP()
     if not hrp or not targetCFrame then 
@@ -240,10 +392,12 @@ local function forceTP(targetCFrame)
         end
     end
     
-    for i = 1, 10 do
-        hrp.CFrame = targetCFrame
-        hrp.Velocity = Vector3.new(0, 0, 0)
-        hrp.RotVelocity = Vector3.new(0, 0, 0)
+    for i = 1, 15 do
+        pcall(function()
+            hrp.CFrame = targetCFrame
+            hrp.Velocity = Vector3.new(0, 0, 0)
+            hrp.RotVelocity = Vector3.new(0, 0, 0)
+        end)
         wait(0.05)
     end
     
@@ -251,482 +405,436 @@ local function forceTP(targetCFrame)
     print("📍 [TP] ระยะห่าง: " .. math.floor(distance) .. " studs")
     
     wait(0.3)
+    
     for _, part in pairs(char:GetDescendants()) do
         if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "Head" then
             part.CanCollide = true
         end
     end
     
-    return distance < 30
+    return distance < 50
 end
 
--- =================== Auto Dungeon Loop ===================
-spawn(function()
-    while programRunning do
-        if state.autoDungeon then
-            print("\n🏛️ ============ Auto Dungeon - เริ่มรอบใหม่ ============")
-            local hrp = getHRP()
-            if not hrp then
-                print("❌ [Dungeon] ไม่พบ HumanoidRootPart")
-                wait(2)
-                continue
-            end
-            
-            print("🔍 [Dungeon] กำลังเปิด Dungeon UI...")
-            
-            -- ลองคลิกปุ่ม Dungeon ในเกมเพื่อเปิด UI
-            local dungeonButtonClicked = false
-            pcall(function()
-                local mainGui = player.PlayerGui:FindFirstChild("Main")
-                if mainGui then
-                    local functionFrame = mainGui:FindFirstChild("FunctionFrame")
-                    if functionFrame then
-                        local dungeonBtn = functionFrame:FindFirstChild("Dungeon")
-                        if dungeonBtn then
-                            print("✅ [Dungeon] พบ " .. dungeonBtn.ClassName .. " ชื่อ Dungeon")
-                            
-                            -- ลองหาปุ่มที่คลิกได้จริงๆ
-                            for _, child in ipairs(dungeonBtn:GetDescendants()) do
-                                if (child:IsA("TextButton") or child:IsA("ImageButton")) and child.Visible then
-                                    print("🔘 [Dungeon] พบปุ่มคลิกได้: " .. child.Name)
-                                    for _, connection in pairs(getconnections(child.MouseButton1Click)) do
-                                        connection:Fire()
-                                        dungeonButtonClicked = true
-                                    end
-                                    if not dungeonButtonClicked then
-                                        child.MouseButton1Click:Fire()
-                                        dungeonButtonClicked = true
-                                    end
-                                    break
-                                end
+local function enterDungeonUI(dungeonName)
+    print("\n🚪 [Dungeon] ===== เปิด Dungeon UI =====")
+    
+    local dungeonButtonClicked = false
+    pcall(function()
+        local mainGui = player.PlayerGui:FindFirstChild("Main")
+        if mainGui then
+            local functionFrame = mainGui:FindFirstChild("FunctionFrame")
+            if functionFrame then
+                local dungeonBtn = functionFrame:FindFirstChild("Dungeon")
+                if dungeonBtn then
+                    print("✅ [Dungeon] พบปุ่ม Dungeon: " .. dungeonBtn.ClassName)
+                    
+                    for _, child in ipairs(dungeonBtn:GetDescendants()) do
+                        if (child:IsA("TextButton") or child:IsA("ImageButton")) and child.Visible then
+                            print("🔘 [Dungeon] คลิกปุ่ม: " .. child.Name)
+                            for _, connection in pairs(getconnections(child.MouseButton1Click)) do
+                                connection:Fire()
+                                dungeonButtonClicked = true
                             end
-                            
-                            -- ถ้ายังไม่ได้ ลองคลิก dungeonBtn เอง
-                            if not dungeonButtonClicked and (dungeonBtn:IsA("TextButton") or dungeonBtn:IsA("ImageButton")) then
-                                print("🔘 [Dungeon] ลองคลิกตัว Dungeon เอง")
-                                for _, connection in pairs(getconnections(dungeonBtn.MouseButton1Click)) do
-                                    connection:Fire()
-                                    dungeonButtonClicked = true
-                                end
-                                if not dungeonButtonClicked then
-                                    dungeonBtn.MouseButton1Click:Fire()
-                                    dungeonButtonClicked = true
-                                end
+                            if not dungeonButtonClicked then
+                                child.MouseButton1Click:Fire()
+                                dungeonButtonClicked = true
                             end
-                        else
-                            print("❌ [Dungeon] ไม่พบ Main.FunctionFrame.Dungeon")
-                        end
-                    else
-                        print("❌ [Dungeon] ไม่พบ Main.FunctionFrame")
-                    end
-                else
-                    print("❌ [Dungeon] ไม่พบ Main GUI")
-                end
-            end)
-            
-            if dungeonButtonClicked then
-                print("✅ [Dungeon] คลิกปุ่ม Dungeon แล้ว - รอ UI โหลด...")
-                wait(2)
-            else
-                print("⚠️ [Dungeon] ไม่พบปุ่ม Dungeon หรือคลิกไม่ได้ - ลองต่อ...")
-                wait(1)
-            end
-            
-            -- ลองหา DungeonGUI หลายครั้ง
-            local dungeonGUI = nil
-            for attempt = 1, 3 do
-                dungeonGUI = player.PlayerGui:FindFirstChild("DungeonGUI")
-                if dungeonGUI then 
-                    print("✅ [Dungeon] พบ DungeonGUI!")
-                    break 
-                end
-                print("⏳ [Dungeon] รอ DungeonGUI... (" .. attempt .. "/3)")
-                wait(1)
-            end
-            
-            if not dungeonGUI then
-                print("❌ [Dungeon] ไม่พบ DungeonGUI - โปรดเปิดเมนู Dungeon ด้วยตัวเอง")
-                print("💡 [Dungeon] กด Dungeon ในเกม แล้วปล่อยให้สคริปต์ทำงานต่อ")
-                wait(5)
-                continue
-            end
-            
-            local dungeonList = dungeonGUI:FindFirstChild("Base")
-            if dungeonList then
-                dungeonList = dungeonList:FindFirstChild("DungeonList")
-            end
-            
-            if not dungeonList then
-                print("❌ [Dungeon] ไม่พบ Base.DungeonList")
-                wait(3)
-                continue
-            end
-            
-            print("🔍 [Dungeon] กำลังหา Trial of Ethernal...")
-            local trialDungeon = dungeonList:FindFirstChild("Trial of Ethernal")
-            if not trialDungeon then
-                print("❌ [Dungeon] ไม่พบ 'Trial of Ethernal' ใน DungeonList")
-                print("📋 [Dungeon] รายการดันเจี้ยนที่มี:")
-                for _, child in ipairs(dungeonList:GetChildren()) do
-                    print("  - " .. child.Name)
-                end
-                wait(3)
-                continue
-            end
-            
-            print("✅ [Dungeon] พบ Trial of Ethernal!")
-            
-            -- หาปุ่ม Enter
-            local enterButton = nil
-            print("🔍 [Dungeon] กำลังหาปุ่ม Enter...")
-            for _, child in ipairs(trialDungeon:GetDescendants()) do
-                if child:IsA("TextButton") then
-                    print("  - พบปุ่ม: " .. child.Name .. " (Text: '" .. (child.Text or "ไม่มี") .. "')")
-                    if child.Text == "Enter" or child.Name == "Enter" or string.find(string.lower(child.Text), "enter") then
-                        enterButton = child
-                        print("✅ [Dungeon] เจอปุ่ม Enter แล้ว!")
-                        break
-                    end
-                end
-            end
-            
-            if not enterButton then
-                print("❌ [Dungeon] ไม่พบปุ่ม Enter - ลองหาใหม่...")
-                wait(3)
-                continue
-            end
-            
-            print("🚪 [Dungeon] กำลังกดปุ่ม Enter...")
-            local clickSuccess = false
-            pcall(function()
-                -- วิธี 1: ใช้ FireServer
-                if enterButton:IsA("TextButton") then
-                    for _, connection in pairs(getconnections(enterButton.MouseButton1Click)) do
-                        connection:Fire()
-                        clickSuccess = true
-                    end
-                end
-            end)
-            
-            if not clickSuccess then
-                pcall(function()
-                    -- วิธี 2: จำลองการคลิก
-                    enterButton.MouseButton1Click:Fire()
-                end)
-            end
-            
-            wait(2)
-            
-            print("✅ [Dungeon] กำลังหาปุ่ม Confirm...")
-            local confirmButton = nil
-            local attempts = 0
-            local maxAttempts = 10
-            
-            while attempts < maxAttempts and not confirmButton do
-                for _, gui in ipairs(player.PlayerGui:GetChildren()) do
-                    for _, child in ipairs(gui:GetDescendants()) do
-                        if child:IsA("TextButton") and child.Visible then
-                            if child.Text == "Confirm" or child.Name == "Confirm" or string.find(string.lower(child.Text), "confirm") then
-                                confirmButton = child
-                                print("✅ [Dungeon] เจอปุ่ม Confirm แล้ว! (" .. child.Text .. ")")
-                                break
-                            end
+                            break
                         end
                     end
-                    if confirmButton then break end
-                end
-                
-                if not confirmButton then
-                    attempts = attempts + 1
-                    print("⏳ [Dungeon] รอปุ่ม Confirm... (" .. attempts .. "/" .. maxAttempts .. ")")
-                    wait(0.5)
-                end
-            end
-            
-            if not confirmButton then
-                print("❌ [Dungeon] ไม่พบปุ่ม Confirm - กลับไปเริ่มใหม่...")
-                wait(2)
-                continue
-            end
-            
-            print("✅ [Dungeon] กำลังกดปุ่ม Confirm...")
-            pcall(function()
-                for _, connection in pairs(getconnections(confirmButton.MouseButton1Click)) do
-                    connection:Fire()
-                end
-            end)
-            
-            pcall(function()
-                confirmButton.MouseButton1Click:Fire()
-            end)
-            
-            print("⏳ [Dungeon] รอเข้าดันเจี้ยน 30 วินาที...")
-            for i = 30, 1, -1 do
-                if not state.autoDungeon or not programRunning then break end
-                if i % 10 == 0 then
-                    print("⏰ [Dungeon] เหลืออีก " .. i .. " วินาที...")
-                end
-                wait(1)
-            end
-            
-            print("🏛️ [Dungeon] เข้าดันเจี้ยนแล้ว - เริ่มหาบอส...")
-            
-            local livesFolder = workspace:FindFirstChild(livesFolderName)
-            if not livesFolder then
-                print("❌ [Dungeon] ไม่พบ Lives folder")
-                wait(5)
-                continue
-            end
-            
-            local bossFound = false
-            local searchAttempts = 0
-            local maxSearchAttempts = 90
-            
-            print("🔍 [Dungeon] กำลังค้นหาบอส Ethernal Lv.90...")
-            while programRunning and state.autoDungeon and searchAttempts < maxSearchAttempts do
-                local boss = livesFolder:FindFirstChild("Ethernal Lv.90")
-                
-                if boss and boss:FindFirstChild("HumanoidRootPart") and boss:FindFirstChild("Humanoid") then
-                    if boss.Humanoid.Health > 0 then
-                        bossFound = true
-                        print("✅ [Dungeon] พบบอส Ethernal Lv.90! 🎯")
-                        
-                        local bossHRP = boss:FindFirstChild("HumanoidRootPart")
-                        local bossHumanoid = boss:FindFirstChild("Humanoid")
-                        
-                        print("🚀 [Dungeon] วาร์ปไปหาบอส...")
-                        local bossCFrame = bossHRP.CFrame * CFrame.new(0, 0, 10)
-                        forceTP(bossCFrame)
-                        wait(1.5)
-                        
-                        print("⚔️ [Dungeon] เริ่มโจมตีบอส! HP: " .. math.floor(bossHumanoid.Health))
-                        local lastHPReport = os.time()
-                        
-                        while programRunning and state.autoDungeon and boss.Parent and bossHumanoid.Health > 0 do
-                            if bossHRP and bossHRP.Parent then
-                                local backDistance = 3
-                                local backPos = bossHRP.Position - bossHRP.CFrame.LookVector * backDistance
-                                
-                                pcall(function()
-                                    hrp = getHRP()
-                                    if hrp then
-                                        hrp.CFrame = CFrame.new(backPos, Vector3.new(bossHRP.Position.X, backPos.Y, bossHRP.Position.Z))
-                                    end
-                                end)
-                                
-                                -- รายงาน HP ทุก 5 วิ
-                                if os.time() - lastHPReport >= 5 then
-                                    print("💥 [Dungeon] Boss HP: " .. math.floor(bossHumanoid.Health))
-                                    lastHPReport = os.time()
-                                end
-                            else
-                                break
-                            end
-                            
-                            wait(0.15)
+                    
+                    if not dungeonButtonClicked and (dungeonBtn:IsA("TextButton") or dungeonBtn:IsA("ImageButton")) then
+                        print("🔘 [Dungeon] คลิก Dungeon button โดยตรง")
+                        for _, connection in pairs(getconnections(dungeonBtn.MouseButton1Click)) do
+                            connection:Fire()
+                            dungeonButtonClicked = true
                         end
-                        
-                        print("✅ [Dungeon] ฆ่าบอสสำเร็จ! 🎉")
-                        break
+                        if not dungeonButtonClicked then
+                            dungeonBtn.MouseButton1Click:Fire()
+                            dungeonButtonClicked = true
+                        end
                     end
                 end
-                
-                if searchAttempts % 10 == 0 and searchAttempts > 0 then
-                    print("⏳ [Dungeon] ยังไม่พบบอส... (" .. searchAttempts .. "/" .. maxSearchAttempts .. ")")
-                end
-                
-                searchAttempts = searchAttempts + 1
-                wait(1)
             end
-            
-            if not bossFound then
-                print("⚠️ [Dungeon] ไม่พบบอสภายใน " .. maxSearchAttempts .. " วินาที")
-                print("💡 [Dungeon] อาจต้องเข้าดันเจี้ยนด้วยตัวเอง หรือเช็คว่าอยู่ในห้องบอสหรือไม่")
-            end
-            
-            print("✅ [Dungeon] รอบนี้เสร็จแล้ว - รอ 5 วิแล้วเริ่มใหม่...")
-            wait(5)
-        else
-            wait(1)
+        end
+    end)
+    
+    if dungeonButtonClicked then
+        print("✅ [Dungeon] คลิกปุ่ม Dungeon สำเร็จ - รอ UI โหลด...")
+        wait(2)
+    else
+        print("⚠️ [Dungeon] ไม่พบปุ่ม Dungeon - ลองต่อ...")
+        wait(1)
+        return false
+    end
+    
+    local dungeonGUI = nil
+    for attempt = 1, 5 do
+        dungeonGUI = player.PlayerGui:FindFirstChild("DungeonGUI")
+        if dungeonGUI then 
+            print("✅ [Dungeon] พบ DungeonGUI!")
+            break 
+        end
+        print("⏳ [Dungeon] รอ DungeonGUI... (" .. attempt .. "/5)")
+        wait(1)
+    end
+    
+    if not dungeonGUI then
+        print("❌ [Dungeon] ไม่พบ DungeonGUI")
+        return false
+    end
+    
+    local dungeonList = dungeonGUI:FindFirstChild("Base")
+    if dungeonList then
+        dungeonList = dungeonList:FindFirstChild("DungeonList")
+    end
+    
+    if not dungeonList then
+        print("❌ [Dungeon] ไม่พบ DungeonList")
+        return false
+    end
+    
+    print("🔍 [Dungeon] กำลังหา " .. dungeonName .. "...")
+    local targetDungeon = dungeonList:FindFirstChild(dungeonName)
+    if not targetDungeon then
+        print("❌ [Dungeon] ไม่พบ '" .. dungeonName .. "'")
+        return false
+    end
+    
+    print("✅ [Dungeon] พบ " .. dungeonName .. "!")
+    
+    local enterButton = nil
+    for _, child in ipairs(targetDungeon:GetDescendants()) do
+        if child:IsA("TextButton") and (child.Text == "Enter" or child.Name == "Enter" or string.find(string.lower(child.Text or ""), "enter")) then
+            enterButton = child
+            break
         end
     end
-end)
--- =================== Auto Event Halloween Loop ===================
-spawn(function()
-    while programRunning do
-        if state.autoEvent then
-            print("\n🎃 ============ เริ่มรอบใหม่ ============")
+    
+    if not enterButton then
+        print("❌ [Dungeon] ไม่พบปุ่ม Enter")
+        return false
+    end
+    
+    print("🚪 [Dungeon] กดปุ่ม Enter...")
+    pcall(function()
+        for _, connection in pairs(getconnections(enterButton.MouseButton1Click)) do
+            connection:Fire()
+        end
+        enterButton.MouseButton1Click:Fire()
+    end)
+    wait(2)
+    
+    print("🔍 [Dungeon] หาปุ่ม Confirm...")
+    local confirmButton = nil
+    local attempts = 0
+    while attempts < 10 and not confirmButton do
+        for _, gui in ipairs(player.PlayerGui:GetChildren()) do
+            for _, child in ipairs(gui:GetDescendants()) do
+                if child:IsA("TextButton") and child.Visible and (child.Text == "Confirm" or child.Name == "Confirm" or string.find(string.lower(child.Text or ""), "confirm")) then
+                    confirmButton = child
+                    break
+                end
+            end
+            if confirmButton then break end
+        end
+        if not confirmButton then
+            attempts = attempts + 1
+            wait(0.5)
+        end
+    end
+    
+    if not confirmButton then
+        print("❌ [Dungeon] ไม่พบปุ่ม Confirm")
+        return false
+    end
+    
+    print("✅ [Dungeon] กดปุ่ม Confirm...")
+    pcall(function()
+        for _, connection in pairs(getconnections(confirmButton.MouseButton1Click)) do
+            connection:Fire()
+        end
+        confirmButton.MouseButton1Click:Fire()
+    end)
+    
+    print("⏳ [Dungeon] รอเข้าดันเจี้ยน 30 วินาที...")
+    for i = 30, 1, -1 do
+        if not state.autoQuest or not programRunning then break end
+        if i % 10 == 0 then
+            print("⏰ [Dungeon] เหลืออีก " .. i .. " วินาที...")
+        end
+        wait(1)
+    end
+    
+    return true
+end
+
+local function summonAndKillStoneBoss(stoneData, bossNames)
+    print("\n🔮 [Stone] ========== " .. stoneData.name .. " ==========")
+    
+    local livesFolder = workspace:FindFirstChild(livesFolderName)
+    if not livesFolder then
+        print("❌ [Stone] ไม่พบ Lives folder")
+        return false
+    end
+    
+    local targetCFrame = stoneData.cframe * CFrame.new(0, 3, 5)
+    print("🚀 [Stone] วาร์ปไปที่ " .. stoneData.name .. " (3 ครั้ง)...")
+    for tpCount = 1, 3 do
+        forceTP(targetCFrame)
+        wait(1)
+    end
+    
+    print("🔮 [Stone] กด E เพื่อซัมมอนบอส (8 ครั้ง)...")
+    for pressCount = 1, 8 do
+        local hrp = getHRP()
+        pcall(function()
+            if hrp then
+                hrp.CFrame = targetCFrame
+                hrp.Velocity = Vector3.new(0, 0, 0)
+                hrp.RotVelocity = Vector3.new(0, 0, 0)
+            end
+        end)
+        wait(0.2)
+        pressSummonKey("E")
+        wait(0.3)
+    end
+    
+    wait(2)
+    
+    print("⏳ [Stone] รอบอสเกิด (สูงสุด 40 วินาที)...")
+    local bossFound = nil
+    local searchAttempts = 0
+    local maxSearchAttempts = 40
+    
+    while programRunning and state.autoQuest and searchAttempts < maxSearchAttempts do
+        for _, bossName in ipairs(bossNames) do
+            local boss = livesFolder:FindFirstChild(bossName)
+            if boss and boss:FindFirstChild("HumanoidRootPart") and boss:FindFirstChild("Humanoid") and boss.Humanoid.Health > 0 then
+                bossFound = boss
+                print("✅ [Stone] พบบอส: " .. bossName .. "! 🎯")
+                break
+            end
+        end
+        
+        if bossFound then break end
+        
+        if searchAttempts % 8 == 0 and searchAttempts > 0 then
+            print("🔮 [Stone] ลองกด E อีกครั้ง...")
             local hrp = getHRP()
-            if not hrp then
-                print("❌ [Halloween] ไม่พบ HumanoidRootPart")
-                wait(2)
-                continue
-            end
-            
-            print("🔍 [Halloween] กำลังค้นหากล่อง...")
-            local chest = workspace:FindFirstChild("KeyItem")
-            if chest then
-                chest = chest:FindFirstChild("Halloween Chest")
-            end
-            
-            if not chest then
-                print("❌ [Halloween] ไม่พบกล่อง 'Halloween Chest' - รอ 5 วินาที...")
-                wait(5)
-                continue
-            end
-            
-            print("✅ [Halloween] พบกล่องแล้ว!")
-            
-            local chestCFrame = nil
-            if chest:IsA("Model") then
-                local primary = chest.PrimaryPart or chest:FindFirstChild("HumanoidRootPart") or chest:FindFirstChildWhichIsA("BasePart")
-                if primary then
-                    chestCFrame = primary.CFrame * CFrame.new(0, 5, 5)
+            pcall(function()
+                if hrp then
+                    hrp.CFrame = targetCFrame
+                    hrp.Velocity = Vector3.new(0, 0, 0)
                 end
-            elseif chest:IsA("BasePart") then
-                chestCFrame = chest.CFrame * CFrame.new(0, 5, 5)
-            end
-            
-            if not chestCFrame then
-                print("❌ [Halloween] ไม่สามารถหา CFrame ของกล่องได้")
-                wait(5)
-                continue
-            end
-            
-            print("🚀 [Halloween] วาร์ปไปที่กล่อง...")
-            local tpSuccess = forceTP(chestCFrame)
-            
-            if not tpSuccess then
-                print("⚠️ [Halloween] วาร์ปครั้งแรกไม่สำเร็จ - ลองอีกครั้ง...")
-                wait(1)
-                forceTP(chestCFrame)
-            end
-            
-            wait(1.5)
-            
-            print("🔮 [Halloween] กด E เพื่อเปิดกล่อง...")
+            end)
+            wait(0.2)
             pressSummonKey("E")
-            wait(3)
+        end
+        
+        searchAttempts = searchAttempts + 1
+        wait(1)
+    end
+    
+    if not bossFound then
+        print("⚠️ [Stone] ไม่พบบอสภายใน 40 วิ - ข้ามไปหินถัดไป")
+        return false
+    end
+    
+    local bossHRP = bossFound:FindFirstChild("HumanoidRootPart")
+    local bossHumanoid = bossFound:FindFirstChild("Humanoid")
+    
+    print("⚔️ [Stone] เริ่มโจมตีบอส! HP: " .. math.floor(bossHumanoid.Health))
+    local lastHPReport = os.time()
+    local stuckCounter = 0
+    local lastHP = bossHumanoid.Health
+    
+    while programRunning and state.autoQuest and bossFound.Parent and bossHumanoid.Health > 0 do
+        if bossHRP and bossHRP.Parent then
+            local backDistance = 3
+            local backPos = bossHRP.Position - bossHRP.CFrame.LookVector * backDistance
             
-            print("⏳ [Halloween] รอมอนเกิด...")
-            wait(2)
+            pcall(function()
+                local hrp = getHRP()
+                if hrp then
+                    hrp.CFrame = CFrame.new(backPos, Vector3.new(bossHRP.Position.X, backPos.Y, bossHRP.Position.Z))
+                end
+            end)
             
-            local livesFolder = workspace:FindFirstChild(livesFolderName)
-            if livesFolder then
-                local function getHallowedGoons()
-                    local goons = {}
-                    for _, mob in ipairs(livesFolder:GetChildren()) do
-                        if mob.Name == "Hollowed Goon Lv.80" and mob:FindFirstChild("HumanoidRootPart") and mob:FindFirstChild("Humanoid") then
-                            if mob.Humanoid.Health > 0 then
-                                table.insert(goons, mob)
-                            end
-                        end
-                    end
-                    return goons
-                end
+            if os.time() - lastHPReport >= 5 then
+                local currentHP = bossHumanoid.Health
+                print("💥 [Stone] Boss HP: " .. math.floor(currentHP) .. " (เหลือ " .. math.floor(currentHP/bossHumanoid.MaxHealth*100) .. "%)")
                 
-                local waitTime = 0
-                local maxWait = 10
-                while waitTime < maxWait do
-                    local currentGoons = getHallowedGoons()
-                    if #currentGoons >= 1 then
-                        print("✅ [Halloween] พบมอน " .. #currentGoons .. " ตัว - เริ่มฆ่า!")
-                        break
-                    end
-                    wait(1)
-                    waitTime = waitTime + 1
-                end
-                
-                local killAttempts = 0
-                local maxKillAttempts = 100
-                
-                while programRunning and state.autoEvent and killAttempts < maxKillAttempts do
-                    local goons = getHallowedGoons()
-                    
-                    if #goons == 0 then
-                        print("✅ [Halloween] ฆ่ามอนหมดแล้ว!")
-                        break
-                    end
-                    
-                    table.sort(goons, function(a, b)
-                        local distA = (hrp.Position - a.HumanoidRootPart.Position).Magnitude
-                        local distB = (hrp.Position - b.HumanoidRootPart.Position).Magnitude
-                        return distA < distB
-                    end)
-                    
-                    local targetGoon = goons[1]
-                    if targetGoon and targetGoon.Parent then
-                        local mobHRP = targetGoon:FindFirstChild("HumanoidRootPart")
-                        local mobHumanoid = targetGoon:FindFirstChild("Humanoid")
-                        
-                        if mobHRP and mobHumanoid and mobHumanoid.Health > 0 then
-                            local backDistance = 3
-                            while programRunning and state.autoEvent and targetGoon.Parent and mobHumanoid.Health > 0 do
-                                local desired = mobHRP.Position - mobHRP.CFrame.LookVector * backDistance
-                                pcall(function()
-                                    hrp.CFrame = CFrame.new(desired, Vector3.new(mobHRP.Position.X, desired.Y, mobHRP.Position.Z))
-                                end)
-                                wait(0.15)
-                            end
-                            print("⚔️ [Halloween] ฆ่ามอน 1 ตัวแล้ว - เหลืออีก " .. (#goons - 1) .. " ตัว")
-                            wait(0.5)
-                        end
-                    end
-                    
-                    killAttempts = killAttempts + 1
-                    wait(0.1)
-                end
-                
-                wait(2)
-                print("🎁 [Halloween] กำลังวาร์ปกลับไปรับของ...")
-                
-                local chestAgain = workspace:FindFirstChild("KeyItem")
-                if chestAgain then
-                    chestAgain = chestAgain:FindFirstChild("Halloween Chest")
-                end
-                
-                if chestAgain then
-                    local chestCFrame2 = nil
-                    if chestAgain:IsA("Model") then
-                        local primary = chestAgain.PrimaryPart or chestAgain:FindFirstChild("HumanoidRootPart") or chestAgain:FindFirstChildWhichIsA("BasePart")
-                        if primary then
-                            chestCFrame2 = primary.CFrame * CFrame.new(0, 5, 5)
-                        end
-                    elseif chestAgain:IsA("BasePart") then
-                        chestCFrame2 = chestAgain.CFrame * CFrame.new(0, 5, 5)
-                    end
-                    
-                    if chestCFrame2 then
-                        local tpSuccess2 = forceTP(chestCFrame2)
-                        if not tpSuccess2 then
-                            print("⚠️ [Halloween] วาร์ปกลับไม่สำเร็จ - ลองอีกครั้ง...")
-                            wait(1)
-                            forceTP(chestCFrame2)
-                        end
-                        wait(1.5)
-                        
-                        print("🎁 [Halloween] กด E เพื่อรับของ...")
-                        pressSummonKey("E")
-                        wait(2)
-                        
-                        print("✅ [Halloween] รอบนี้เสร็จแล้ว! เริ่มรอบใหม่ใน 3 วินาที...")
-                        wait(3)
-                    else
-                        print("❌ [Halloween] ไม่พบ CFrame ของกล่อง")
-                        wait(3)
+                if math.abs(currentHP - lastHP) < 10 then
+                    stuckCounter = stuckCounter + 1
+                    if stuckCounter >= 3 then
+                        print("⚠️ [Stone] HP ไม่ลง! ลองวาร์ปใหม่...")
+                        forceTP(CFrame.new(backPos, Vector3.new(bossHRP.Position.X, backPos.Y, bossHRP.Position.Z)))
+                        stuckCounter = 0
                     end
                 else
-                    print("❌ [Halloween] ไม่พบกล่องเมื่อจะรับของ")
-                    wait(3)
+                    stuckCounter = 0
+                end
+                
+                lastHP = currentHP
+                lastHPReport = os.time()
+            end
+        else
+            break
+        end
+        wait(0.15)
+    end
+    
+    print("✅ [Stone] ฆ่าบอสที่ " .. stoneData.name .. " สำเร็จ! 🎉")
+    wait(2)
+    return true
+end
+
+-- =================== Auto Level Farm Loop (ENHANCED v3!) ===================
+spawn(function()
+    local lastLevel = 0
+    local currentTargetMonster = nil
+    local lastLevelCheckTime = 0
+    local monstersKilled = 0
+    local sessionStartTime = os.time()
+    
+    while programRunning do
+        if state.autoLevelFarm then
+            local currentTime = tick()
+            
+            -- ตรวจสอบเลเวลทุก 3 วินาที (เร็วขึ้น!)
+            if currentTime - lastLevelCheckTime >= 3 then
+                local playerLevel = getPlayerLevel()
+                lastLevelCheckTime = currentTime
+                
+                -- อัปเดต GUI สถานะเรียลไทม์
+                if levelFarmCurrentLevel then
+                    levelFarmCurrentLevel.Text = "📊 เลเวลปัจจุบัน: " .. playerLevel
+                end
+                
+                -- ถ้าถึงเลเวล 80 แล้ว หยุดทำงาน
+                if playerLevel >= 80 then
+                    print("\n" .. string.rep("🎉", 30))
+                    print("🎉 ขอแสดงความยินดี! ถึงเลเวล 80 แล้ว!")
+                    print("🎉 หยุด Auto Level Farm อัตโนมัติ")
+                    print("📊 สถิติรวม:")
+                    print("  • เวลาที่ใช้: " .. math.floor((os.time() - sessionStartTime) / 60) .. " นาที")
+                    print("  • มอนที่ฆ่า: " .. monstersKilled .. " ตัว")
+                    print(string.rep("🎉", 30) .. "\n")
+                    
+                    state.autoLevelFarm = false
+                    
+                    -- อัปเดต GUI
+                    if levelFarmStatusLabel then
+                        levelFarmStatusLabel.Text = "✅ เลเวล 80 - หยุดอัตโนมัติ!"
+                        levelFarmStatusLabel.TextColor3 = Color3.fromRGB(67, 181, 129)
+                    end
+                    if levelFarmCurrentTarget then
+                        levelFarmCurrentTarget.Text = "🎯 เป้าหมาย: เสร็จสิ้น!"
+                        levelFarmCurrentTarget.TextColor3 = Color3.fromRGB(67, 181, 129)
+                    end
+                    break
+                end
+                
+                -- ถ้าเลเวลเปลี่ยน หรือยังไม่มี target
+                if playerLevel ~= lastLevel or not currentTargetMonster then
+                    lastLevel = playerLevel
+                    local targetMonster = getTargetMonsterByLevel(playerLevel)
+                    
+                    if targetMonster and targetMonster ~= "STOP" then
+                        if targetMonster ~= currentTargetMonster then
+                            currentTargetMonster = targetMonster
+                            
+                            print("\n" .. string.rep("=", 60))
+                            print("🎯 [Level Farm] เปลี่ยนเป้าหมายใหม่!")
+                            print("📊 เลเวลปัจจุบัน: " .. playerLevel)
+                            print("🎯 มอนเป้าหมาย: " .. currentTargetMonster)
+                            print("⏱️ เวลาที่ใช้: " .. math.floor((os.time() - sessionStartTime) / 60) .. " นาที")
+                            print("💀 มอนที่ฆ่าแล้ว: " .. monstersKilled .. " ตัว")
+                            print(string.rep("=", 60) .. "\n")
+                            
+                            -- อัปเดต GUI
+                            if levelFarmCurrentTarget then
+                                levelFarmCurrentTarget.Text = "🎯 เป้าหมาย: " .. currentTargetMonster
+                            end
+                        end
+                    else
+                        print("⚠️ [Level Farm] ไม่พบมอนสเตอร์สำหรับเลเวล " .. playerLevel)
+                        wait(5)
+                        continue
+                    end
+                end
+            end
+            
+            -- ฟามมอนที่เลือก
+            if currentTargetMonster then
+                local monster = findMonsterByName(currentTargetMonster)
+                
+                if monster then
+                    local mobHRP = monster:FindFirstChild("HumanoidRootPart")
+                    local mobHumanoid = monster:FindFirstChild("Humanoid")
+                    
+                    if mobHRP and mobHumanoid and mobHumanoid.Health > 0 then
+                        local hrp = getHRP()
+                        if hrp then
+                            local distance = (hrp.Position - mobHRP.Position).Magnitude
+                            
+                            -- ถ้าอยู่ไกลเกิน 50 studs ให้วาร์ป
+                            if distance > 50 then
+                                local backDistance = 5
+                                local targetPos = mobHRP.Position - mobHRP.CFrame.LookVector * backDistance
+                                local targetCF = CFrame.new(targetPos, Vector3.new(mobHRP.Position.X, targetPos.Y, mobHRP.Position.Z))
+                                
+                                print("🚀 [Level Farm] วาร์ปไปหา " .. currentTargetMonster .. " (ระยะ: " .. math.floor(distance) .. " studs)")
+                                smartTeleport(targetCF)
+                                wait(0.5)
+                            else
+                                -- ถ้าอยู่ใกล้ ก็เดินเข้าไปปกติ
+                                local backDistance = 3
+                                local backPos = mobHRP.Position - mobHRP.CFrame.LookVector * backDistance
+                                
+                                pcall(function()
+                                    hrp.CFrame = CFrame.new(backPos, Vector3.new(mobHRP.Position.X, backPos.Y, mobHRP.Position.Z))
+                                end)
+                            end
+                            
+                            -- ตรวจสอบว่ามอนตายหรือยัง
+                            local previousHealth = mobHumanoid.Health
+                            wait(0.1)
+                            if mobHumanoid.Health <= 0 and previousHealth > 0 then
+                                monstersKilled = monstersKilled + 1
+                                
+                                -- อัปเดต GUI
+                                if levelFarmKillCount then
+                                    levelFarmKillCount.Text = "💀 ฆ่าแล้ว: " .. monstersKilled .. " ตัว"
+                                end
+                            end
+                        end
+                    else
+                        -- มอนตายแล้ว รอ respawn
+                        wait(0.5)
+                    end
+                else
+                    -- ไม่พบมอน ค้นหาใหม่
+                    print("⏳ [Level Farm] กำลังค้นหา " .. currentTargetMonster .. "...")
+                    
+                    -- อัปเดต GUI
+                    if levelFarmStatusLabel then
+                        levelFarmStatusLabel.Text = "🔍 กำลังค้นหา " .. currentTargetMonster .. "..."
+                        levelFarmStatusLabel.TextColor3 = Color3.fromRGB(250, 166, 26)
+                    end
+                    
+                    wait(2)
                 end
             end
         else
             wait(1)
         end
+        wait(state.autoFarmInterval)
     end
 end)
 
--- =================== AutoQuest Loop ===================
+-- =================== AutoQuest Loop (ULTRA STABLE!) ===================
 spawn(function()
     while programRunning do
         if state.autoQuest and state.selectedQuest then
@@ -735,29 +843,122 @@ spawn(function()
             if hrp then
                 local npc = getNPCFromPath(questData.npcPath)
                 if npc and npc:FindFirstChild("HumanoidRootPart") then
-                    pcall(function()
-                        hrp.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 0, 4)
-                    end)
-                    wait(1)
-                    clickNPC(npc)
-                    wait(1)
+                    -- ⚡ วาร์ปหา NPC (3 ครั้ง)
+                    print("🚀 [Quest] วาร์ปไปหา NPC " .. questData.npcName)
+                    local npcCFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.5)
+                    
+                    for tpAttempt = 1, 3 do
+                        pcall(function()
+                            hrp.CFrame = npcCFrame
+                            hrp.Velocity = Vector3.new(0, 0, 0)
+                            hrp.RotVelocity = Vector3.new(0, 0, 0)
+                        end)
+                        wait(0.2)
+                    end
+                    
+                    wait(0.5)
+                    
+                    -- ⚡ คลิก NPC หลายครั้ง
+                    print("🖱️ [Quest] คลิก NPC...")
+                    for clickAttempt = 1, 3 do
+                        clickNPC(npc)
+                        wait(0.3)
+                    end
+                    
+                    wait(0.5)
+                    
+                    print("💬 [Quest] คุยรับเควส...")
                     talkToNPC(questData)
-                    wait(2)
+                    wait(1.5)
+                    
+                    -- ⚡ ตรวจสอบว่าได้เควสหรือยัง (เช็ค 10 ครั้ง)
                     local questReceived = false
-                    for i = 1, 5 do
+                    for i = 1, 10 do
                         if hasActiveQuest(questData) then
                             questReceived = true
+                            print("✅ [Quest] รับเควส " .. questData.name .. " สำเร็จ!")
                             break
                         else
-                            wait(1)
+                            print("⏳ [Quest] รอรับเควส... (" .. i .. "/10)")
+                            wait(0.5)
                         end
                     end
+                    
                     if not questReceived then
-                        wait(3)
+                        print("❌ [Quest] ไม่ได้รับเควส - ลองใหม่อีกครั้ง!")
+                        wait(2)
                         continue
                     end
-                    wait(1)
-                    if questData.questType == "summon" then
+                    
+                    wait(0.5)
+                    
+                    if questData.questType == "ancient_dungeon" then
+                        print("\n🏛️ ============ เริ่มทำเควส Ancient Argument (Enhanced!) ============")
+                        
+                        local dungeonEntered = enterDungeonUI(questData.dungeonName)
+                        
+                        if not dungeonEntered then
+                            print("❌ [Quest] ไม่สามารถเข้าดันได้ - ข้ามรอบนี้")
+                            wait(5)
+                            continue
+                        end
+                        
+                        print("✅ [Quest] เข้าดันสำเร็จ! เริ่มภารกิจ 3 หิน...")
+                        wait(2)
+                        
+                        local successfulKills = 0
+                        for stoneIdx, stoneData in ipairs(questData.stonePositions) do
+                            if not state.autoQuest or not programRunning then break end
+                            
+                            local killed = summonAndKillStoneBoss(stoneData, questData.bossNames)
+                            if killed then
+                                successfulKills = successfulKills + 1
+                                print("✅ [Quest] ฆ่าบอสสำเร็จ! (" .. successfulKills .. "/3)")
+                            else
+                                print("⚠️ [Quest] ไม่สามารถฆ่าบอส " .. stoneData.name .. " ได้")
+                            end
+                            
+                            wait(2)
+                        end
+                        
+                        print("\n✅ [Quest] ภารกิจ 3 หินเสร็จสิ้น! ฆ่าได้ " .. successfulKills .. "/3 หิน")
+                        
+                        print("\n⏳ [Quest] ===== รอออกจากดันเจี้ยน =====")
+                        
+                        local leftDungeon = false
+                        pcall(function()
+                            for _, gui in ipairs(player.PlayerGui:GetChildren()) do
+                                for _, button in ipairs(gui:GetDescendants()) do
+                                    if button:IsA("TextButton") and button.Visible then
+                                        local buttonText = string.lower(button.Text or "")
+                                        if string.find(buttonText, "leave") or string.find(buttonText, "exit") or string.find(buttonText, "quit") then
+                                            print("🚪 [Quest] พบปุ่ม: " .. button.Text .. " - กำลังกด...")
+                                            for _, connection in pairs(getconnections(button.MouseButton1Click)) do
+                                                connection:Fire()
+                                            end
+                                            button.MouseButton1Click:Fire()
+                                            leftDungeon = true
+                                            wait(2)
+                                            break
+                                        end
+                                    end
+                                end
+                                if leftDungeon then break end
+                            end
+                        end)
+                        
+                        if leftDungeon then
+                            print("✅ [Quest] กดปุ่มออกแล้ว - รอเทเลพอร์ต...")
+                            wait(10)
+                        else
+                            print("⏳ [Quest] ไม่พบปุ่มออก - รอให้เกมเทเลพอร์ตออกอัตโนมัติ...")
+                            wait(15)
+                        end
+                        
+                        print("⏳ [Quest] รอให้ออกจากดันอย่างสมบูรณ์...")
+                        wait(10)
+                        
+                    elseif questData.questType == "summon" then
                         local summonSpot = getSummonLocation(questData)
                         if summonSpot then
                             pcall(function()
@@ -766,6 +967,7 @@ spawn(function()
                             wait(1.5)
                             pressSummonKey(questData.summonKey)
                             wait(2)
+                            
                             local bossFound = false
                             local attempts = 0
                             local maxAttempts = 100
@@ -793,6 +995,7 @@ spawn(function()
                                     wait(1)
                                 end
                             end
+                            
                             if not bossFound then
                                 wait(3)
                                 continue
@@ -836,30 +1039,54 @@ spawn(function()
                                 wait(0.1)
                             end
                             if killedMobs[mobName] then
-                                wait(2)
+                                wait(1)
                             end
                         end
                     end
-                    wait(2)
-                    pcall(function()
-                        hrp.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 0, 4)
-                    end)
+                    
                     wait(1.5)
+                    
+                    -- ⚡ วาร์ปกลับส่งเควส (3 ครั้ง)
+                    print("📜 [Quest] กลับไปส่งเควสที่ NPC...")
+                    local submitCFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.5)
+                    
+                    for tpAttempt = 1, 3 do
+                        pcall(function()
+                            hrp = getHRP()
+                            if hrp then
+                                hrp.CFrame = submitCFrame
+                                hrp.Velocity = Vector3.new(0, 0, 0)
+                                hrp.RotVelocity = Vector3.new(0, 0, 0)
+                            end
+                        end)
+                        wait(0.2)
+                    end
+                    
+                    wait(0.5)
+                    
+                    print("📬 [Quest] ส่งเควส...")
                     submitQuest(questData, npc)
-                    wait(2)
+                    wait(1.5)
+                    
+                    -- ⚡ ตรวจสอบว่าส่งสำเร็จหรือยัง (เช็ค 10 ครั้ง)
                     local questSubmitted = false
-                    for i = 1, 5 do
+                    for i = 1, 10 do
                         if not hasActiveQuest(questData) then
                             questSubmitted = true
+                            print("✅ [Quest] ส่งเควสสำเร็จ!")
                             break
                         else
-                            wait(1)
+                            print("⏳ [Quest] รอส่งเควส... (" .. i .. "/10)")
+                            wait(0.5)
                         end
                     end
+                    
                     if questSubmitted then
-                        wait(3)
-                    else
+                        print("✅ [Quest] รอบเสร็จ - เริ่มรอบใหม่...")
                         wait(2)
+                    else
+                        print("⚠️ [Quest] เควสยังอยู่ - ลองส่งอีกครั้ง...")
+                        wait(1.5)
                     end
                 end
             end
@@ -872,7 +1099,299 @@ spawn(function()
     end
 end)
 
--- =================== AutoFarm Loop ===================
+-- =================== Auto Dungeon Loop ===================
+spawn(function()
+    while programRunning do
+        if state.autoDungeon then
+            print("\n🏛️ ============ Auto Dungeon - เริ่มรอบใหม่ ============")
+            local hrp = getHRP()
+            if not hrp then
+                print("❌ [Dungeon] ไม่พบ HumanoidRootPart")
+                wait(2)
+                continue
+            end
+            
+            local dungeonEntered = enterDungeonUI("Trial of Ethernal")
+            
+            if not dungeonEntered then
+                print("❌ [Dungeon] ไม่สามารถเข้าดันได้")
+                wait(5)
+                continue
+            end
+            
+            print("🏛️ [Dungeon] เข้าดันเจี้ยนแล้ว - เริ่มหาบอส...")
+            
+            local livesFolder = workspace:FindFirstChild(livesFolderName)
+            if not livesFolder then
+                print("❌ [Dungeon] ไม่พบ Lives folder")
+                wait(5)
+                continue
+            end
+            
+            local bossFound = false
+            local searchAttempts = 0
+            local maxSearchAttempts = 90
+            
+            while programRunning and state.autoDungeon and searchAttempts < maxSearchAttempts do
+                local boss = livesFolder:FindFirstChild("Ethernal Lv.90")
+                
+                if boss and boss:FindFirstChild("HumanoidRootPart") and boss:FindFirstChild("Humanoid") then
+                    if boss.Humanoid.Health > 0 then
+                        bossFound = true
+                        print("✅ [Dungeon] พบบอส Ethernal Lv.90!")
+                        
+                        local bossHRP = boss:FindFirstChild("HumanoidRootPart")
+                        local bossHumanoid = boss:FindFirstChild("Humanoid")
+                        
+                        local bossCFrame = bossHRP.CFrame * CFrame.new(0, 0, 10)
+                        forceTP(bossCFrame)
+                        wait(1.5)
+                        
+                        print("⚔️ [Dungeon] เริ่มโจมตีบอส!")
+                        
+                        while programRunning and state.autoDungeon and boss.Parent and bossHumanoid.Health > 0 do
+                            if bossHRP and bossHRP.Parent then
+                                local backDistance = 3
+                                local backPos = bossHRP.Position - bossHRP.CFrame.LookVector * backDistance
+                                
+                                pcall(function()
+                                    hrp = getHRP()
+                                    if hrp then
+                                        hrp.CFrame = CFrame.new(backPos, Vector3.new(bossHRP.Position.X, backPos.Y, bossHRP.Position.Z))
+                                    end
+                                end)
+                            else
+                                break
+                            end
+                            wait(0.15)
+                        end
+                        
+                        print("✅ [Dungeon] ฆ่าบอสสำเร็จ!")
+                        wait(20)
+                        break
+                    end
+                end
+                
+                searchAttempts = searchAttempts + 1
+                wait(1)
+            end
+            
+            if not bossFound then
+                print("⚠️ [Dungeon] ไม่พบบอสภายใน 90 วินาที")
+            end
+            
+            print("✅ [Dungeon] รอบนี้เสร็จสมบูรณ์ - เริ่มรอบใหม่ใน 5 วิ...")
+            wait(5)
+        else
+            wait(1)
+        end
+    end
+end)
+
+-- =================== Use Currency Crate Function ===================
+local function useCurrencyCrate()
+    pcall(function()
+        local backpack = player.PlayerGui:FindFirstChild("Main")
+        if backpack then
+            backpack = backpack:FindFirstChild("BackpackMainFrame")
+            if backpack then
+                backpack = backpack:FindFirstChild("Inventory")
+                if backpack then
+                    backpack = backpack:FindFirstChild("ItemScroll")
+                    if backpack then
+                        local crate = backpack:FindFirstChild("Currency Crate I")
+                        if crate then
+                            print("💰 [Halloween] พบ Currency Crate I - กำลังใช้...")
+                            
+                            -- คลิกไอเทม
+                            for _, connection in pairs(getconnections(crate.MouseButton1Click)) do
+                                connection:Fire()
+                            end
+                            
+                            -- ลองคลิกทุกวิธี
+                            if crate:IsA("GuiButton") then
+                                crate.MouseButton1Click:Fire()
+                            end
+                            
+                            -- หาปุ่ม Use
+                            for _, descendant in pairs(crate:GetDescendants()) do
+                                if descendant:IsA("TextButton") and (descendant.Text == "Use" or descendant.Name == "Use") then
+                                    for _, connection in pairs(getconnections(descendant.MouseButton1Click)) do
+                                        connection:Fire()
+                                    end
+                                    descendant.MouseButton1Click:Fire()
+                                end
+                            end
+                            
+                            wait(0.5)
+                            
+                            -- หาปุ่ม Confirm
+                            for _, gui in ipairs(player.PlayerGui:GetChildren()) do
+                                for _, child in ipairs(gui:GetDescendants()) do
+                                    if child:IsA("TextButton") and child.Visible and (child.Text == "Confirm" or child.Name == "Confirm" or string.find(string.lower(child.Text or ""), "confirm")) then
+                                        print("✅ [Halloween] กดปุ่ม Confirm ใช้ Crate...")
+                                        for _, connection in pairs(getconnections(child.MouseButton1Click)) do
+                                            connection:Fire()
+                                        end
+                                        child.MouseButton1Click:Fire()
+                                        wait(0.5)
+                                        return true
+                                    end
+                                end
+                            end
+                            
+                            return true
+                        else
+                            print("ℹ️ [Halloween] ไม่พบ Currency Crate I ในกระเป๋า")
+                        end
+                    end
+                end
+            end
+        end
+    end)
+    return false
+end
+
+-- =================== Auto Event Halloween Loop ===================
+spawn(function()
+    while programRunning do
+        if state.autoEvent then
+            print("\n🎃 ============ เริ่มรอบใหม่ ============")
+            local hrp = getHRP()
+            if not hrp then
+                print("❌ [Halloween] ไม่พบ HumanoidRootPart")
+                wait(2)
+                continue
+            end
+            
+            print("🔍 [Halloween] กำลังค้นหากล่อง...")
+            local chest = workspace:FindFirstChild("KeyItem")
+            if chest then
+                chest = chest:FindFirstChild("Halloween Chest")
+            end
+            
+            if not chest then
+                print("❌ [Halloween] ไม่พบกล่อง - รอ 5 วินาที...")
+                wait(5)
+                continue
+            end
+            
+            local chestCFrame = nil
+            if chest:IsA("Model") then
+                local primary = chest.PrimaryPart or chest:FindFirstChild("HumanoidRootPart") or chest:FindFirstChildWhichIsA("BasePart")
+                if primary then
+                    chestCFrame = primary.CFrame * CFrame.new(0, 5, 5)
+                end
+            elseif chest:IsA("BasePart") then
+                chestCFrame = chest.CFrame * CFrame.new(0, 5, 5)
+            end
+            
+            if not chestCFrame then
+                print("❌ [Halloween] ไม่สามารถหา CFrame ของกล่องได้")
+                wait(5)
+                continue
+            end
+            
+            print("🚀 [Halloween] วาร์ปไปที่กล่อง...")
+            forceTP(chestCFrame)
+            wait(1.5)
+            
+            print("🔮 [Halloween] กด E เพื่อเปิดกล่อง...")
+            pressSummonKey("E")
+            wait(5)
+            
+            local livesFolder = workspace:FindFirstChild(livesFolderName)
+            if livesFolder then
+                local function getHallowedGoons()
+                    local goons = {}
+                    for _, mob in ipairs(livesFolder:GetChildren()) do
+                        if mob.Name == "Hollowed Goon Lv.80" and mob:FindFirstChild("HumanoidRootPart") and mob:FindFirstChild("Humanoid") then
+                            if mob.Humanoid.Health > 0 then
+                                table.insert(goons, mob)
+                            end
+                        end
+                    end
+                    return goons
+                end
+                
+                local waitTime = 0
+                while waitTime < 10 do
+                    local currentGoons = getHallowedGoons()
+                    if #currentGoons >= 1 then
+                        print("✅ [Halloween] พบมอน " .. #currentGoons .. " ตัว - เริ่มฆ่า!")
+                        break
+                    end
+                    wait(1)
+                    waitTime = waitTime + 1
+                end
+                
+                local killAttempts = 0
+                while programRunning and state.autoEvent and killAttempts < 100 do
+                    local goons = getHallowedGoons()
+                    
+                    if #goons == 0 then
+                        print("✅ [Halloween] ฆ่ามอนหมดแล้ว!")
+                        break
+                    end
+                    
+                    table.sort(goons, function(a, b)
+                        local distA = (hrp.Position - a.HumanoidRootPart.Position).Magnitude
+                        local distB = (hrp.Position - b.HumanoidRootPart.Position).Magnitude
+                        return distA < distB
+                    end)
+                    
+                    local targetGoon = goons[1]
+                    if targetGoon and targetGoon.Parent then
+                        local mobHRP = targetGoon:FindFirstChild("HumanoidRootPart")
+                        local mobHumanoid = targetGoon:FindFirstChild("Humanoid")
+                        
+                        if mobHRP and mobHumanoid and mobHumanoid.Health > 0 then
+                            while programRunning and state.autoEvent and targetGoon.Parent and mobHumanoid.Health > 0 do
+                                local backDistance = 3
+                                local desired = mobHRP.Position - mobHRP.CFrame.LookVector * backDistance
+                                pcall(function()
+                                    hrp.CFrame = CFrame.new(desired, Vector3.new(mobHRP.Position.X, desired.Y, mobHRP.Position.Z))
+                                end)
+                                wait(0.15)
+                            end
+                            print("⚔️ [Halloween] ฆ่ามอน 1 ตัว - เหลืออีก " .. (#goons - 1) .. " ตัว")
+                        end
+                    end
+                    
+                    killAttempts = killAttempts + 1
+                    wait(0.1)
+                end
+                
+                wait(2)
+                print("🎁 [Halloween] วาร์ปกลับไปรับของ...")
+                forceTP(chestCFrame)
+                wait(1.5)
+                
+                pressSummonKey("E")
+                wait(2)
+                
+                -- ใช้ Currency Crate I ทันทีหลังจากรับของ
+                print("💰 [Halloween] ตรวจสอบ Currency Crate I...")
+                for i = 1, 5 do
+                    local used = useCurrencyCrate()
+                    if used then
+                        print("✅ [Halloween] ใช้ Currency Crate I สำเร็จ!")
+                        wait(1)
+                    else
+                        break
+                    end
+                end
+                
+                print("✅ [Halloween] รอบเสร็จแล้ว!")
+                wait(3)
+            end
+        else
+            wait(1)
+        end
+    end
+end)
+
+-- =================== AutoFarm Loop (Original) ===================
 spawn(function()
     while programRunning do
         if state.autoFarm then
@@ -1148,8 +1667,8 @@ local colors = {
 
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "Main"
-mainFrame.Size = UDim2.new(0, 480, 0, 520)
-mainFrame.Position = UDim2.new(0.5, -240, 0.5, -260)
+mainFrame.Size = UDim2.new(0, 480, 0, 550)
+mainFrame.Position = UDim2.new(0.5, -240, 0.5, -275)
 mainFrame.BackgroundColor3 = colors.bg
 mainFrame.BorderSizePixel = 0
 mainFrame.Parent = screenGui
@@ -1174,7 +1693,7 @@ local title = Instance.new("TextLabel", topBar)
 title.Size = UDim2.new(0, 250, 1, 0)
 title.Position = UDim2.new(0, 15, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "⚡ Admin All In One"
+title.Text = "⚡ Admin Enhanced v3.0"
 title.TextColor3 = colors.text
 title.Font = Enum.Font.GothamBold
 title.TextSize = 17
@@ -1345,18 +1864,147 @@ local function createToggle(parent, text, callback)
     return container
 end
 
--- Farm Tab
+-- =================== Farm Tab (ENHANCED v3!) ===================
 farmContent.Visible = true
+
+-- Level Farm Info Card (ENHANCED!)
+local levelFarmCard = Instance.new("Frame", farmContent)
+levelFarmCard.Size = UDim2.new(1, 0, 0, 140)
+levelFarmCard.BackgroundColor3 = colors.bg
+levelFarmCard.BorderSizePixel = 0
+local levelFarmCorner = Instance.new("UICorner", levelFarmCard)
+levelFarmCorner.CornerRadius = UDim.new(0, 10)
+local levelFarmStroke = Instance.new("UIStroke", levelFarmCard)
+levelFarmStroke.Color = colors.success
+levelFarmStroke.Thickness = 2
+levelFarmStroke.Transparency = 0.3
+
+local levelIcon = Instance.new("TextLabel", levelFarmCard)
+levelIcon.Size = UDim2.new(0, 80, 1, -16)
+levelIcon.Position = UDim2.new(0, 8, 0, 8)
+levelIcon.BackgroundTransparency = 1
+levelIcon.Text = "🚀"
+levelIcon.Font = Enum.Font.GothamBold
+levelIcon.TextSize = 48
+
+local levelInfoFrame = Instance.new("Frame", levelFarmCard)
+levelInfoFrame.Size = UDim2.new(1, -100, 1, -16)
+levelInfoFrame.Position = UDim2.new(0, 96, 0, 8)
+levelInfoFrame.BackgroundTransparency = 1
+
+local levelTitle = Instance.new("TextLabel", levelInfoFrame)
+levelTitle.Size = UDim2.new(1, 0, 0, 24)
+levelTitle.BackgroundTransparency = 1
+levelTitle.Text = "🎯 Smart Level Farm System v3.0"
+levelTitle.TextColor3 = colors.success
+levelTitle.Font = Enum.Font.GothamBold
+levelTitle.TextSize = 14
+levelTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+local levelDesc = Instance.new("TextLabel", levelInfoFrame)
+levelDesc.Size = UDim2.new(1, 0, 0, 32)
+levelDesc.Position = UDim2.new(0, 0, 0, 26)
+levelDesc.BackgroundTransparency = 1
+levelDesc.Text = "✨ NEW! อ่านเลเวลจาก StatsReplicated\nวาร์ปไปหามอนอัตโนมัติ ไม่ว่าจะไกลแค่ไหน!"
+levelDesc.TextColor3 = colors.textDim
+levelDesc.Font = Enum.Font.Gotham
+levelDesc.TextSize = 10
+levelDesc.TextWrapped = true
+levelDesc.TextXAlignment = Enum.TextXAlignment.Left
+levelDesc.TextYAlignment = Enum.TextYAlignment.Top
+
+-- สถานะเรียลไทม์
+levelFarmCurrentLevel = Instance.new("TextLabel", levelInfoFrame)
+levelFarmCurrentLevel.Size = UDim2.new(1, 0, 0, 18)
+levelFarmCurrentLevel.Position = UDim2.new(0, 0, 0, 60)
+levelFarmCurrentLevel.BackgroundTransparency = 1
+levelFarmCurrentLevel.Text = "📊 เลเวลปัจจุบัน: กำลังโหลด..."
+levelFarmCurrentLevel.TextColor3 = colors.accent
+levelFarmCurrentLevel.Font = Enum.Font.GothamBold
+levelFarmCurrentLevel.TextSize = 11
+levelFarmCurrentLevel.TextXAlignment = Enum.TextXAlignment.Left
+
+levelFarmCurrentTarget = Instance.new("TextLabel", levelInfoFrame)
+levelFarmCurrentTarget.Size = UDim2.new(1, 0, 0, 18)
+levelFarmCurrentTarget.Position = UDim2.new(0, 0, 0, 80)
+levelFarmCurrentTarget.BackgroundTransparency = 1
+levelFarmCurrentTarget.Text = "🎯 เป้าหมาย: ยังไม่เริ่ม"
+levelFarmCurrentTarget.TextColor3 = colors.textDim
+levelFarmCurrentTarget.Font = Enum.Font.GothamBold
+levelFarmCurrentTarget.TextSize = 11
+levelFarmCurrentTarget.TextXAlignment = Enum.TextXAlignment.Left
+
+levelFarmKillCount = Instance.new("TextLabel", levelInfoFrame)
+levelFarmKillCount.Size = UDim2.new(1, 0, 0, 18)
+levelFarmKillCount.Position = UDim2.new(0, 0, 0, 100)
+levelFarmKillCount.BackgroundTransparency = 1
+levelFarmKillCount.Text = "💀 ฆ่าแล้ว: 0 ตัว"
+levelFarmKillCount.TextColor3 = colors.warning
+levelFarmKillCount.Font = Enum.Font.GothamBold
+levelFarmKillCount.TextSize = 11
+levelFarmKillCount.TextXAlignment = Enum.TextXAlignment.Left
+
+levelFarmStatusLabel = Instance.new("TextLabel", levelInfoFrame)
+levelFarmStatusLabel.Size = UDim2.new(1, 0, 0, 18)
+levelFarmStatusLabel.Position = UDim2.new(0, 0, 1, -22)
+levelFarmStatusLabel.BackgroundTransparency = 1
+levelFarmStatusLabel.Text = "📊 สถานะ: ปิด"
+levelFarmStatusLabel.TextColor3 = colors.textDim
+levelFarmStatusLabel.Font = Enum.Font.GothamBold
+levelFarmStatusLabel.TextSize = 11
+levelFarmStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Auto Level Farm Toggle
+createToggle(farmContent, "🚀 เปิด Auto Level Farm (Smart)", function(on) 
+    state.autoLevelFarm = on 
+    if on then
+        levelFarmStatusLabel.Text = "✅ กำลังฟามอัตโนมัติ..."
+        levelFarmStatusLabel.TextColor3 = colors.success
+        state.autoFarm = false -- ปิด AutoFarm ปกติ
+        
+        -- เริ่มอัปเดตเลเวลทันที
+        local currentLevel = getPlayerLevel()
+        levelFarmCurrentLevel.Text = "📊 เลเวลปัจจุบัน: " .. currentLevel
+        
+        local targetMonster = getTargetMonsterByLevel(currentLevel)
+        if targetMonster and targetMonster ~= "STOP" then
+            levelFarmCurrentTarget.Text = "🎯 เป้าหมาย: " .. targetMonster
+        end
+    else
+        levelFarmStatusLabel.Text = "📊 สถานะ: ปิด"
+        levelFarmStatusLabel.TextColor3 = colors.textDim
+        levelFarmCurrentTarget.Text = "🎯 เป้าหมาย: หยุดทำงาน"
+        levelFarmCurrentTarget.TextColor3 = colors.textDim
+    end
+end)
+
+-- Separator
+local separator1 = Instance.new("Frame", farmContent)
+separator1.Size = UDim2.new(1, 0, 0, 2)
+separator1.BackgroundColor3 = colors.textDim
+separator1.BorderSizePixel = 0
+separator1.BackgroundTransparency = 0.7
+
+-- Original Farm Section
 local farmTitle = Instance.new("TextLabel", farmContent)
 farmTitle.Size = UDim2.new(1, 0, 0, 30)
 farmTitle.BackgroundTransparency = 1
-farmTitle.Text = "เลือกมอนสเตอร์ที่จะฟาร์ม"
+farmTitle.Text = "📋 Manual Farm (เลือกมอนเอง)"
 farmTitle.TextColor3 = colors.accent
 farmTitle.Font = Enum.Font.GothamBold
-farmTitle.TextSize = 16
+farmTitle.TextSize = 14
 farmTitle.TextXAlignment = Enum.TextXAlignment.Left
 
-createToggle(farmContent, "🎯 เปิด AutoFarm", function(on) state.autoFarm = on end)
+createToggle(farmContent, "🎯 เปิด AutoFarm (Manual)", function(on) 
+    state.autoFarm = on 
+    if on then
+        state.autoLevelFarm = false -- ปิด Auto Level Farm
+        levelFarmStatusLabel.Text = "📊 สถานะ: ปิด (ใช้ Manual แทน)"
+        levelFarmStatusLabel.TextColor3 = colors.warning
+        levelFarmCurrentTarget.Text = "🎯 เป้าหมาย: Manual Mode"
+        levelFarmCurrentTarget.TextColor3 = colors.warning
+    end
+end)
 
 local quickFrame = Instance.new("Frame", farmContent)
 quickFrame.Size = UDim2.new(1, 0, 0, 40)
@@ -1383,7 +2031,7 @@ local btnAll = createQuickBtn("✓ เลือกทั้งหมด", colors
 local btnNone = createQuickBtn("✗ ยกเลิกทั้งหมด", colors.danger)
 
 local monsterScroll = Instance.new("ScrollingFrame", farmContent)
-monsterScroll.Size = UDim2.new(1, 0, 0, 200)
+monsterScroll.Size = UDim2.new(1, 0, 0, 180)
 monsterScroll.BackgroundColor3 = colors.bg
 monsterScroll.BorderSizePixel = 0
 monsterScroll.ScrollBarThickness = 4
@@ -1434,6 +2082,26 @@ btnNone.MouseButton1Click:Connect(function()
     end
 end)
 
+-- Farm Info
+local farmInfo = Instance.new("TextLabel", farmContent)
+farmInfo.Size = UDim2.new(1, 0, 0, 75)
+farmInfo.BackgroundColor3 = colors.bg
+farmInfo.BorderSizePixel = 0
+farmInfo.Text = "💡 คำแนะนำ:\n🚀 Smart Level Farm: ฟามอัตโนมัติตามเลเวล (แนะนำ!)\n📋 Manual Farm: เลือกมอนเองจากรายการด้านบน\n✨ NEW! วาร์ปไปหามอนอัตโนมัติ ไม่ว่าจะไกลแค่ไหน!\n🎯 หยุดอัตโนมัติที่เลเวล 80"
+farmInfo.TextColor3 = colors.textDim
+farmInfo.Font = Enum.Font.Gotham
+farmInfo.TextSize = 10
+farmInfo.TextWrapped = true
+farmInfo.TextXAlignment = Enum.TextXAlignment.Left
+farmInfo.TextYAlignment = Enum.TextYAlignment.Top
+local farmInfoPadding = Instance.new("UIPadding", farmInfo)
+farmInfoPadding.PaddingLeft = UDim.new(0, 10)
+farmInfoPadding.PaddingRight = UDim.new(0, 10)
+farmInfoPadding.PaddingTop = UDim.new(0, 8)
+farmInfoPadding.PaddingBottom = UDim.new(0, 8)
+local farmInfoCorner = Instance.new("UICorner", farmInfo)
+farmInfoCorner.CornerRadius = UDim.new(0, 10)
+
 farmLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     farmContent.CanvasSize = UDim2.new(0, 0, 0, farmLayout.AbsoluteContentSize.Y + 20)
 end)
@@ -1455,7 +2123,7 @@ local dungeonInfo = Instance.new("TextLabel", bossContent)
 dungeonInfo.Size = UDim2.new(1, 0, 0, 70)
 dungeonInfo.BackgroundColor3 = colors.bg
 dungeonInfo.BorderSizePixel = 0
-dungeonInfo.Text = "💡 คำแนะนำ Dungeon:\n• เปิด Auto Attack + Auto Skills ก่อนใช้งาน\n• ระบบจะ: กด Enter → Confirm → รอ 30 วิ → วาร์ปหาบอส → ฆ่า\n• ดู Console (F9) เพื่อดูสถานะการทำงาน"
+dungeonInfo.Text = "💡 คำแนะนำ:\n• เปิด Auto Attack + Auto Skills ก่อนใช้งาน\n• Trial of Ethernal: กด Enter → Confirm → รอ 30 วิ → ฆ่าบอส\n• Trial of Ancient: ใช้ในแท็บ Quest แทน (Enhanced!)"
 dungeonInfo.TextColor3 = colors.textDim
 dungeonInfo.Font = Enum.Font.Gotham
 dungeonInfo.TextSize = 10
@@ -1557,6 +2225,8 @@ for idx, questData in ipairs(questDatabase) do
         typeLabel.Text = "⚔️ ฆ่ามอน: " .. #questData.monsters .. " ตัว"
     elseif questData.questType == "summon" then
         typeLabel.Text = "👹 Summon Boss: " .. questData.bossName
+    elseif questData.questType == "ancient_dungeon" then
+        typeLabel.Text = "🏛️ Dungeon: " .. questData.dungeonName .. " (Enhanced!)"
     end
     typeLabel.TextColor3 = colors.textDim
     typeLabel.Font = Enum.Font.Gotham
@@ -1666,10 +2336,10 @@ questToggle.MouseButton1Click:Connect(function()
 end)
 
 local questInfo = Instance.new("TextLabel", questContent)
-questInfo.Size = UDim2.new(1, 0, 0, 60)
+questInfo.Size = UDim2.new(1, 0, 0, 80)
 questInfo.BackgroundColor3 = colors.bg
 questInfo.BorderSizePixel = 0
-questInfo.Text = "💡 คำแนะนำ:\n• เลือกเควสที่ต้องการก่อน\n• เปิด Auto Attack + Auto Skills เพื่อประสิทธิภาพสูงสุด"
+questInfo.Text = "💡 คำแนะนำ:\n• เลือกเควสที่ต้องการก่อน\n• Ancient Argument: วาร์ป 3 ครั้ง/หิน, กด E 8 ครั้ง, รอบอส 40 วิ\n• เปิด Auto Attack + Auto Skills + Auto X เพื่อประสิทธิภาพสูงสุด\n• กด F9 ดู Console"
 questInfo.TextColor3 = colors.textDim
 questInfo.Font = Enum.Font.Gotham
 questInfo.TextSize = 10
@@ -1938,8 +2608,3 @@ btnNo.MouseButton1Click:Connect(function()
     confirmFrame.Visible = false
 end)
 
-print("✅ AdminAllInOne - Full Version โหลดสำเร็จ!")
-print("🏛️ Auto Dungeon: Trial of Ethernal (ใหม่!)")
-print("🎃 Halloween Event: Auto Farm + Teleport")
-print("📜 Auto Quest: Kill & Summon Boss")
-print("📊 กด F9 เพื่อเปิด Console ดูสถานะการทำงาน")
