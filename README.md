@@ -1742,6 +1742,7 @@ spawn(function()
                         local forms = {
                             "Survive Bat",
                             "Survive Cobra", 
+                            "Survive Ryuga", 
                             "Survive Dragon"
                         }
                         
