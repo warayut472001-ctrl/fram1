@@ -1,11 +1,11 @@
-
-
--- AdminAllInOne.lua v3.0 - AUTO LEVEL FARM ENHANCED!
+-- AdminAllInOne.lua v4.0 - MULTI-DUNGEON SYSTEM!
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+-- 🆕 ตัวแปรควบคุม Auto Attack/Skills 
+local combatPaused = false  -- ใช้หยุดการโจมตีชั่วคราว
 
 local player = Players.LocalPlayer
 
@@ -52,11 +52,12 @@ for _, m in ipairs(targetMonsters) do selectedMonsters[m] = true end
 
 local state = {
     autoFarm=false, autoFarmInterval=0.1,
-    autoLevelFarm=false, -- ระบบฟามตามเลเวลอัตโนมัติ (NEW!)
+    autoLevelFarm=false,
     lockPos=false,
     afkEnabled=false,
     autoBoss=false,
     autoDungeon=false,
+    selectedDungeon="ethernal", -- 🆕 ดันที่เลือก
     autoMine=false,
     autoAttack=false,
     autoHeavyAttack=false,
@@ -132,6 +133,33 @@ local questDatabase = {
         bossNames = {"Daguba Lv.90", "Mighty Rider Lv.90", "Empowered Daguba Lv.90"},
         icon = "🏛️"
     }
+}
+
+-- =================== Boss Database (เพิ่มดันใหม่ที่นี่!) ===================
+local bossDatabase = {
+    ethernal = {
+        id = "ethernal",
+        displayName = "Trial of Ethernal",
+        dungeonName = "Trial of Ethernal",
+        bossNames = {"Ethernal Lv.90"},
+        icon = "⚡"
+    },
+    ancient = {
+        id = "ancient",
+        displayName = "Trial of Ancient",
+        dungeonName = "Trial of Ancient",
+        bossNames = {"Daguba Lv.90", "Mighty Rider Lv.90", "Empowered Daguba Lv.90"},
+        icon = "🏛️"
+    }
+    -- 🆕 เพิ่มดันใหม่ตรงนี้!
+    -- ตัวอย่าง:
+    -- darkness = {
+    --     id = "darkness",
+    --     displayName = "Trial of Darkness",
+    --     dungeonName = "Trial of Darkness",
+    --     bossNames = {"Dark Lord Lv.100"},
+    --     icon = "🌑"
+    -- }
 }
 
 local bp,bv,bg
@@ -418,6 +446,11 @@ end
 local function enterDungeonUI(dungeonName)
     print("\n🚪 [Dungeon] ===== เปิด Dungeon UI =====")
     
+    -- 🛑 หยุดการโจมตีตอนเปิด UI
+    combatPaused = true
+    print("⏸️ [Dungeon] หยุด Auto Attack/Skills ตอนเปิด UI")
+    wait(0.3)
+    
     local dungeonButtonClicked = false
     pcall(function()
         local mainGui = player.PlayerGui:FindFirstChild("Main")
@@ -558,6 +591,7 @@ local function enterDungeonUI(dungeonName)
     end)
     
     print("⏳ [Dungeon] รอเข้าดันเจี้ยน 30 วินาที...")
+    print("⏸️ [Dungeon] ยังคงปิดการโจมตี...")
     for i = 30, 1, -1 do
         if not state.autoQuest or not programRunning then break end
         if i % 10 == 0 then
@@ -565,6 +599,9 @@ local function enterDungeonUI(dungeonName)
         end
         wait(1)
     end
+    
+    -- ⚠️ ยังไม่เปิดการโจมตีที่นี่ - จะเปิดตอนพบบอส
+    print("✅ [Dungeon] เข้าดันสำเร็จ - ยังคงปิดการโจมตี รอหาบอส...")
     
     return true
 end
@@ -834,7 +871,7 @@ spawn(function()
     end
 end)
 
--- =================== AutoQuest Loop (ULTRA STABLE!) ===================
+-- =================== AutoQuest Loop (ULTRA STABLE v3.2 - Combat Pause Fixed!) ===================
 spawn(function()
     while programRunning do
         if state.autoQuest and state.selectedQuest then
@@ -843,7 +880,14 @@ spawn(function()
             if hrp then
                 local npc = getNPCFromPath(questData.npcPath)
                 if npc and npc:FindFirstChild("HumanoidRootPart") then
-                    -- ⚡ วาร์ปหา NPC (3 ครั้ง)
+                    
+                    -- 🛑 หยุดการโจมตี
+                    combatPaused = true
+                    print("⏸️ [Quest] หยุด Auto Attack/Skills ชั่วคราว")
+                    wait(0.3)
+                    
+                    -- ⚡ Step 1: วาร์ปหา NPC (3 ครั้ง)
+                    print("\n🚀 [Quest] ========== เริ่มรับเควส ==========")
                     print("🚀 [Quest] วาร์ปไปหา NPC " .. questData.npcName)
                     local npcCFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.5)
                     
@@ -856,55 +900,79 @@ spawn(function()
                         wait(0.2)
                     end
                     
+                    -- ⏰ IMPORTANT: รอ UI โหลด 8 วินาที
+                    print("⏰ [Quest] รอ UI โหลด... (8 วินาที)")
+                    for i = 8, 1, -1 do
+                        if i % 2 == 0 then
+                            print("⏳ เหลืออีก " .. i .. " วินาที...")
+                        end
+                        wait(1)
+                    end
+                    print("✅ [Quest] UI โหลดเสร็จแล้ว!")
+                    
                     wait(0.5)
                     
-                    -- ⚡ คลิก NPC หลายครั้ง
+                    -- ⚡ Step 2: คลิก NPC หลายครั้ง
                     print("🖱️ [Quest] คลิก NPC...")
-                    for clickAttempt = 1, 3 do
+                    for clickAttempt = 1, 5 do
                         clickNPC(npc)
-                        wait(0.3)
+                        wait(0.4)
                     end
                     
-                    wait(0.5)
+                    wait(0.8)
                     
+                    -- ⚡ Step 3: คุยรับเควส
                     print("💬 [Quest] คุยรับเควส...")
                     talkToNPC(questData)
-                    wait(1.5)
+                    wait(2)
                     
-                    -- ⚡ ตรวจสอบว่าได้เควสหรือยัง (เช็ค 10 ครั้ง)
+                    -- ⚡ Step 4: ตรวจสอบว่าได้เควสหรือยัง
                     local questReceived = false
-                    for i = 1, 10 do
+                    for i = 1, 15 do
                         if hasActiveQuest(questData) then
                             questReceived = true
                             print("✅ [Quest] รับเควส " .. questData.name .. " สำเร็จ!")
                             break
                         else
-                            print("⏳ [Quest] รอรับเควส... (" .. i .. "/10)")
+                            print("⏳ [Quest] รอรับเควส... (" .. i .. "/15)")
                             wait(0.5)
                         end
                     end
                     
                     if not questReceived then
                         print("❌ [Quest] ไม่ได้รับเควส - ลองใหม่อีกครั้ง!")
-                        wait(2)
+                        combatPaused = false  -- เปิดการโจมตีกลับ
+                        wait(3)
                         continue
                     end
                     
+                    -- ⏸️ ยังคงปิดการโจมตีต่อ รอจนกว่าจะเริ่มตีจริงๆ
+                    print("⏸️ [Quest] รับเควสเสร็จ - ยังคงปิดการโจมตี รอเริ่มทำเควส...")
                     wait(0.5)
                     
+                    -- =================== ส่วนทำเควส ===================
                     if questData.questType == "ancient_dungeon" then
+                        -- ⏸️ ยังคงปิดการโจมตีตอนเข้าดัน
+                        print("⏸️ [Quest] ยังคงปิดการโจมตีตอนเข้าดัน")
+                        
                         print("\n🏛️ ============ เริ่มทำเควส Ancient Argument (Enhanced!) ============")
                         
                         local dungeonEntered = enterDungeonUI(questData.dungeonName)
                         
                         if not dungeonEntered then
                             print("❌ [Quest] ไม่สามารถเข้าดันได้ - ข้ามรอบนี้")
+                            combatPaused = false
                             wait(5)
                             continue
                         end
                         
                         print("✅ [Quest] เข้าดันสำเร็จ! เริ่มภารกิจ 3 หิน...")
                         wait(2)
+                        
+                        -- ✅ เปิดการโจมตีกลับ เพราะจะเริ่มตีบอสจริงๆ
+                        combatPaused = false
+                        print("▶️ [Quest] เปิด Auto Attack/Skills - เริ่มตีบอส!")
+                        wait(0.5)
                         
                         local successfulKills = 0
                         for stoneIdx, stoneData in ipairs(questData.stonePositions) do
@@ -922,6 +990,10 @@ spawn(function()
                         end
                         
                         print("\n✅ [Quest] ภารกิจ 3 หินเสร็จสิ้น! ฆ่าได้ " .. successfulKills .. "/3 หิน")
+                        
+                        -- 🛑 หยุดการโจมตีตอนออกดัน
+                        combatPaused = true
+                        print("⏸️ [Quest] หยุดการโจมตีตอนออกดัน")
                         
                         print("\n⏳ [Quest] ===== รอออกจากดันเจี้ยน =====")
                         
@@ -959,6 +1031,11 @@ spawn(function()
                         wait(10)
                         
                     elseif questData.questType == "summon" then
+                        print("\n👹 [Quest] ========== เริ่มทำเควส Summon Boss ==========")
+                        
+                        -- ⏸️ ยังคงปิดการโจมตีตอนวาร์ป
+                        print("⏸️ [Quest] ยังคงปิดการโจมตีตอนวาร์ป")
+                        
                         local summonSpot = getSummonLocation(questData)
                         if summonSpot then
                             pcall(function()
@@ -968,6 +1045,8 @@ spawn(function()
                             pressSummonKey(questData.summonKey)
                             wait(2)
                             
+                            print("⏳ [Quest] กำลังหาบอส...")
+                            
                             local bossFound = false
                             local attempts = 0
                             local maxAttempts = 100
@@ -975,8 +1054,15 @@ spawn(function()
                                 local boss = getQuestMob(questData.bossName)
                                 if boss then
                                     bossFound = true
+                                    
+                                    -- ✅ พบบอสแล้ว เปิดการโจมตี
+                                    combatPaused = false
+                                    print("▶️ [Quest] พบบอส " .. questData.bossName .. " - เปิดการโจมตี!")
+                                    wait(0.5)
+                                    
                                     local bossHRP = boss:FindFirstChild("HumanoidRootPart")
                                     local bossHumanoid = boss:FindFirstChild("Humanoid")
+                                    
                                     while programRunning and state.autoQuest and boss.Parent and bossHumanoid and bossHumanoid.Health > 0 do
                                         if bossHRP then
                                             local backDistance = 3
@@ -989,6 +1075,7 @@ spawn(function()
                                             break
                                         end
                                     end
+                                    print("✅ [Quest] ฆ่าบอสสำเร็จ!")
                                     break
                                 else
                                     attempts = attempts + 1
@@ -997,30 +1084,56 @@ spawn(function()
                             end
                             
                             if not bossFound then
+                                print("⚠️ [Quest] ไม่พบบอส - ข้ามรอบนี้")
+                                combatPaused = false
                                 wait(3)
                                 continue
                             end
                         else
+                            print("❌ [Quest] ไม่พบจุด Summon")
+                            combatPaused = false
                             wait(3)
                             continue
                         end
+                        
                     elseif questData.questType == "kill" then
+                        print("\n⚔️ [Quest] ========== เริ่มทำเควส Kill Monsters ==========")
+                        
+                        -- ⏸️ ยังคงปิดการโจมตี รอจนกว่าจะพบมอนตัวแรก
+                        print("⏸️ [Quest] ยังคงปิดการโจมตี - กำลังค้นหามอน...")
+                        
                         local killedMobs = {}
+                        local firstMobFound = false
+                        
                         for _, mobName in ipairs(questData.monsters) do
+                            print("🎯 [Quest] เป้าหมาย: " .. mobName)
                             local mobFound = false
                             local attempts = 0
                             local maxAttempts = 150
+                            
                             while programRunning and state.autoQuest and not killedMobs[mobName] and attempts < maxAttempts do
                                 local mob = getQuestMob(mobName)
                                 if not mob then
                                     if mobFound then
                                         killedMobs[mobName] = true
+                                        print("✅ [Quest] ฆ่า " .. mobName .. " สำเร็จ!")
                                         break
                                     else
                                         attempts = attempts + 1
+                                        if attempts % 10 == 0 then
+                                            print("⏳ [Quest] รอ " .. mobName .. " spawn... (" .. attempts .. "/" .. maxAttempts .. ")")
+                                        end
                                         wait(1)
                                     end
                                 else
+                                    -- ✅ พบมอนตัวแรก เปิดการโจมตี
+                                    if not firstMobFound then
+                                        combatPaused = false
+                                        print("▶️ [Quest] พบมอนแล้ว - เปิดการโจมตี!")
+                                        firstMobFound = true
+                                        wait(0.5)
+                                    end
+                                    
                                     mobFound = true
                                     local mobHRP = mob:FindFirstChild("HumanoidRootPart")
                                     local mobHumanoid = mob:FindFirstChild("Humanoid")
@@ -1033,6 +1146,7 @@ spawn(function()
                                         wait(0.15)
                                     else
                                         killedMobs[mobName] = true
+                                        print("✅ [Quest] ฆ่า " .. mobName .. " สำเร็จ!")
                                         break
                                     end
                                 end
@@ -1042,12 +1156,19 @@ spawn(function()
                                 wait(1)
                             end
                         end
+                        print("✅ [Quest] ฆ่ามอนครบทุกตัวแล้ว!")
                     end
                     
                     wait(1.5)
                     
-                    -- ⚡ วาร์ปกลับส่งเควส (3 ครั้ง)
-                    print("📜 [Quest] กลับไปส่งเควสที่ NPC...")
+                    -- 🛑 หยุดการโจมตีก่อนส่งเควส
+                    combatPaused = true
+                    print("⏸️ [Quest] หยุดการโจมตีก่อนส่งเควส")
+                    wait(0.3)
+                    
+                    -- ⚡ ส่งเควส - รอ UI โหลดเหมือนกัน
+                    print("\n📜 [Quest] ========== กลับไปส่งเควส ==========")
+                    print("🚀 [Quest] วาร์ปกลับหา NPC...")
                     local submitCFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.5)
                     
                     for tpAttempt = 1, 3 do
@@ -1062,31 +1183,54 @@ spawn(function()
                         wait(0.2)
                     end
                     
+                    -- ⏰ รอ UI โหลด 8 วินาที
+                    print("⏰ [Quest] รอ UI โหลด... (8 วินาที)")
+                    for i = 8, 1, -1 do
+                        if i % 2 == 0 then
+                            print("⏳ เหลืออีก " .. i .. " วินาที...")
+                        end
+                        wait(1)
+                    end
+                    print("✅ [Quest] UI โหลดเสร็จแล้ว!")
+                    
+                    wait(0.5)
+                    
+                    -- ⚡ คลิก NPC ก่อนส่งเควส
+                    print("🖱️ [Quest] คลิก NPC...")
+                    for clickAttempt = 1, 5 do
+                        clickNPC(npc)
+                        wait(0.4)
+                    end
+                    
                     wait(0.5)
                     
                     print("📬 [Quest] ส่งเควส...")
                     submitQuest(questData, npc)
-                    wait(1.5)
+                    wait(2)
                     
-                    -- ⚡ ตรวจสอบว่าส่งสำเร็จหรือยัง (เช็ค 10 ครั้ง)
+                    -- ตรวจสอบว่าส่งสำเร็จหรือยัง
                     local questSubmitted = false
-                    for i = 1, 10 do
+                    for i = 1, 15 do
                         if not hasActiveQuest(questData) then
                             questSubmitted = true
                             print("✅ [Quest] ส่งเควสสำเร็จ!")
                             break
                         else
-                            print("⏳ [Quest] รอส่งเควส... (" .. i .. "/10)")
+                            print("⏳ [Quest] รอส่งเควส... (" .. i .. "/15)")
                             wait(0.5)
                         end
                     end
                     
+                    -- ✅ เปิดการโจมตีกลับหลังส่งเควสเสร็จ
+                    combatPaused = false
+                    print("▶️ [Quest] ส่งเควสเสร็จ - เปิดการโจมตีกลับ!")
+                    
                     if questSubmitted then
-                        print("✅ [Quest] รอบเสร็จ - เริ่มรอบใหม่...")
-                        wait(2)
+                        print("✅ [Quest] รอบเสร็จสมบูรณ์ - เริ่มรอบใหม่ใน 3 วินาที...")
+                        wait(3)
                     else
                         print("⚠️ [Quest] เควสยังอยู่ - ลองส่งอีกครั้ง...")
-                        wait(1.5)
+                        wait(2)
                     end
                 end
             end
@@ -1094,16 +1238,25 @@ spawn(function()
             if state.autoQuest and not state.selectedQuest then
                 state.autoQuest = false
             end
+            -- ตรวจสอบว่าไม่ได้ทำเควสแล้ว ให้เปิดการโจมตีกลับ
+            if not state.autoQuest and combatPaused then
+                combatPaused = false
+                print("▶️ [System] ปิดเควส - เปิดการโจมตีกลับ")
+            end
         end
         wait(1)
     end
 end)
 
--- =================== Auto Dungeon Loop ===================
+-- =================== Auto Dungeon Loop (v4.0 - Flexible Boss System) ===================
 spawn(function()
     while programRunning do
         if state.autoDungeon then
+            -- 🛑 หยุดการโจมตีตั้งแต่เริ่มต้น
+            combatPaused = true
             print("\n🏛️ ============ Auto Dungeon - เริ่มรอบใหม่ ============")
+            print("⏸️ [Dungeon] หยุดการโจมตีตั้งแต่เริ่มต้น")
+            
             local hrp = getHRP()
             if not hrp then
                 print("❌ [Dungeon] ไม่พบ HumanoidRootPart")
@@ -1111,7 +1264,10 @@ spawn(function()
                 continue
             end
             
-            local dungeonEntered = enterDungeonUI("Trial of Ethernal")
+            -- 📌 เลือกดันเจี้ยนที่จะฟาม (แก้ตรงนี้ถ้าต้องการเปลี่ยนดัน)
+            local selectedBossData = bossDatabase.ethernal
+            
+            local dungeonEntered = enterDungeonUI(selectedBossData.dungeonName)
             
             if not dungeonEntered then
                 print("❌ [Dungeon] ไม่สามารถเข้าดันได้")
@@ -1120,6 +1276,7 @@ spawn(function()
             end
             
             print("🏛️ [Dungeon] เข้าดันเจี้ยนแล้ว - เริ่มหาบอส...")
+            print("⏸️ [Dungeon] ยังคงปิดการโจมตี รอจนกว่าจะพบบอส...")
             
             local livesFolder = workspace:FindFirstChild(livesFolderName)
             if not livesFolder then
@@ -1132,127 +1289,114 @@ spawn(function()
             local searchAttempts = 0
             local maxSearchAttempts = 90
             
+            -- 🔍 ค้นหาบอส (ยังคงปิดการโจมตี)
             while programRunning and state.autoDungeon and searchAttempts < maxSearchAttempts do
-                local boss = livesFolder:FindFirstChild("Ethernal Lv.90")
+                local boss = nil
                 
-                if boss and boss:FindFirstChild("HumanoidRootPart") and boss:FindFirstChild("Humanoid") then
-                    if boss.Humanoid.Health > 0 then
-                        bossFound = true
-                        print("✅ [Dungeon] พบบอส Ethernal Lv.90!")
-                        
-                        local bossHRP = boss:FindFirstChild("HumanoidRootPart")
-                        local bossHumanoid = boss:FindFirstChild("Humanoid")
-                        
-                        local bossCFrame = bossHRP.CFrame * CFrame.new(0, 0, 10)
-                        forceTP(bossCFrame)
-                        wait(1.5)
-                        
-                        print("⚔️ [Dungeon] เริ่มโจมตีบอส!")
-                        
-                        while programRunning and state.autoDungeon and boss.Parent and bossHumanoid.Health > 0 do
-                            if bossHRP and bossHRP.Parent then
-                                local backDistance = 3
-                                local backPos = bossHRP.Position - bossHRP.CFrame.LookVector * backDistance
-                                
-                                pcall(function()
-                                    hrp = getHRP()
-                                    if hrp then
-                                        hrp.CFrame = CFrame.new(backPos, Vector3.new(bossHRP.Position.X, backPos.Y, bossHRP.Position.Z))
-                                    end
-                                end)
-                            else
-                                break
-                            end
-                            wait(0.15)
+                -- ลองหาทุกชื่อบอสจาก Database
+                for _, bossName in ipairs(selectedBossData.bossNames) do
+                    boss = livesFolder:FindFirstChild(bossName)
+                    if boss and boss:FindFirstChild("HumanoidRootPart") and boss:FindFirstChild("Humanoid") then
+                        if boss.Humanoid.Health > 0 then
+                            print("✅ [Dungeon] พบบอส: " .. boss.Name .. "!")
+                            break
                         end
-                        
-                        print("✅ [Dungeon] ฆ่าบอสสำเร็จ!")
-                        wait(20)
-                        break
+                    end
+                    boss = nil
+                end
+                
+                if boss then
+                    bossFound = true
+                    local bossHRP = boss:FindFirstChild("HumanoidRootPart")
+                    local bossHumanoid = boss:FindFirstChild("Humanoid")
+                    
+                    -- วาร์ปไปหน้าบอส (ยังคงปิดการโจมตี)
+                    print("🚀 [Dungeon] วาร์ปไปหน้าบอส...")
+                    local bossCFrame = bossHRP.CFrame * CFrame.new(0, 0, 10)
+                    forceTP(bossCFrame)
+                    wait(1.5)
+                    
+                    -- ✅ อยู่หน้าบอสแล้ว เปิดการโจมตี
+                    combatPaused = false
+                    print("▶️ [Dungeon] อยู่หน้าบอสแล้ว - เปิดการโจมตี!")
+                    wait(0.5)
+                    
+                    print("⚔️ [Dungeon] เริ่มโจมตีบอส! HP: " .. math.floor(bossHumanoid.Health))
+                    local lastHPReport = os.time()
+                    
+                    -- ตีบอสจนตาย
+                    while programRunning and state.autoDungeon and boss.Parent and bossHumanoid.Health > 0 do
+                        if bossHRP and bossHRP.Parent then
+                            local backDistance = 3
+                            local backPos = bossHRP.Position - bossHRP.CFrame.LookVector * backDistance
+                            
+                            pcall(function()
+                                hrp = getHRP()
+                                if hrp then
+                                    hrp.CFrame = CFrame.new(backPos, Vector3.new(bossHRP.Position.X, backPos.Y, bossHRP.Position.Z))
+                                end
+                            end)
+                            
+                            -- รายงาน HP ทุก 5 วินาที
+                            if os.time() - lastHPReport >= 5 then
+                                print("💥 [Dungeon] Boss HP: " .. math.floor(bossHumanoid.Health) .. " / " .. math.floor(bossHumanoid.MaxHealth))
+                                lastHPReport = os.time()
+                            end
+                        else
+                            break
+                        end
+                        wait(0.15)
+                    end
+                    
+                    print("✅ [Dungeon] ฆ่าบอสสำเร็จ!")
+                    
+                    -- 🛑 ฆ่าบอสเสร็จ หยุดการโจมตีทันที
+                    combatPaused = true
+                    print("⏸️ [Dungeon] ฆ่าบอสเสร็จ - หยุดการโจมตีทันที")
+                    
+                    wait(20)
+                    break
+                end
+                
+                -- ยังไม่เจอบอส - รอต่อ
+                searchAttempts = searchAttempts + 1
+                if searchAttempts % 10 == 0 then
+                    print("⏳ [Dungeon] รอบอสเกิด... (" .. searchAttempts .. "/" .. maxSearchAttempts .. " วินาที)")
+                    print("⏸️ [Dungeon] ยังคงปิดการโจมตี...")
+                end
+                
+                -- 🐛 Debug: แสดงรายชื่อมอนทั้งหมด (ครั้งแรกเท่านั้น)
+                if searchAttempts == 1 then
+                    print("🔍 [Debug] กำลังมองหาบอส:")
+                    for _, name in ipairs(selectedBossData.bossNames) do
+                        print("   • " .. name)
                     end
                 end
                 
-                searchAttempts = searchAttempts + 1
                 wait(1)
             end
             
             if not bossFound then
                 print("⚠️ [Dungeon] ไม่พบบอสภายใน 90 วินาที")
+                print("💡 [Dungeon] กด F9 ดู Console เพื่อเช็คชื่อมอนที่มี")
             end
             
+            -- 🛑 ยังคงปิดการโจมตี ไม่เปิดกลับ
+            print("⏸️ [Dungeon] ออกดันแล้ว - ยังคงปิดการโจมตี")
             print("✅ [Dungeon] รอบนี้เสร็จสมบูรณ์ - เริ่มรอบใหม่ใน 5 วิ...")
             wait(5)
         else
+            -- ถ้าปิด Auto Dungeon แล้ว ให้เปิดการโจมตีกลับ
+            if combatPaused and not state.autoQuest then
+                combatPaused = false
+                print("▶️ [Dungeon] ปิด Auto Dungeon - เปิดการโจมตีกลับ")
+            end
             wait(1)
         end
     end
 end)
 
--- =================== Use Currency Crate Function ===================
-local function useCurrencyCrate()
-    pcall(function()
-        local backpack = player.PlayerGui:FindFirstChild("Main")
-        if backpack then
-            backpack = backpack:FindFirstChild("BackpackMainFrame")
-            if backpack then
-                backpack = backpack:FindFirstChild("Inventory")
-                if backpack then
-                    backpack = backpack:FindFirstChild("ItemScroll")
-                    if backpack then
-                        local crate = backpack:FindFirstChild("Currency Crate I")
-                        if crate then
-                            print("💰 [Halloween] พบ Currency Crate I - กำลังใช้...")
-                            
-                            -- คลิกไอเทม
-                            for _, connection in pairs(getconnections(crate.MouseButton1Click)) do
-                                connection:Fire()
-                            end
-                            
-                            -- ลองคลิกทุกวิธี
-                            if crate:IsA("GuiButton") then
-                                crate.MouseButton1Click:Fire()
-                            end
-                            
-                            -- หาปุ่ม Use
-                            for _, descendant in pairs(crate:GetDescendants()) do
-                                if descendant:IsA("TextButton") and (descendant.Text == "Use" or descendant.Name == "Use") then
-                                    for _, connection in pairs(getconnections(descendant.MouseButton1Click)) do
-                                        connection:Fire()
-                                    end
-                                    descendant.MouseButton1Click:Fire()
-                                end
-                            end
-                            
-                            wait(0.5)
-                            
-                            -- หาปุ่ม Confirm
-                            for _, gui in ipairs(player.PlayerGui:GetChildren()) do
-                                for _, child in ipairs(gui:GetDescendants()) do
-                                    if child:IsA("TextButton") and child.Visible and (child.Text == "Confirm" or child.Name == "Confirm" or string.find(string.lower(child.Text or ""), "confirm")) then
-                                        print("✅ [Halloween] กดปุ่ม Confirm ใช้ Crate...")
-                                        for _, connection in pairs(getconnections(child.MouseButton1Click)) do
-                                            connection:Fire()
-                                        end
-                                        child.MouseButton1Click:Fire()
-                                        wait(0.5)
-                                        return true
-                                    end
-                                end
-                            end
-                            
-                            return true
-                        else
-                            print("ℹ️ [Halloween] ไม่พบ Currency Crate I ในกระเป๋า")
-                        end
-                    end
-                end
-            end
-        end
-    end)
-    return false
-end
-
--- =================== Auto Event Halloween Loop ===================
+-- =================== Auto Event Halloween Loop (ลบ Currency Crate I) ===================
 spawn(function()
     while programRunning do
         if state.autoEvent then
@@ -1369,18 +1513,6 @@ spawn(function()
                 
                 pressSummonKey("E")
                 wait(2)
-                
-                -- ใช้ Currency Crate I ทันทีหลังจากรับของ
-                print("💰 [Halloween] ตรวจสอบ Currency Crate I...")
-                for i = 1, 5 do
-                    local used = useCurrencyCrate()
-                    if used then
-                        print("✅ [Halloween] ใช้ Currency Crate I สำเร็จ!")
-                        wait(1)
-                    else
-                        break
-                    end
-                end
                 
                 print("✅ [Halloween] รอบเสร็จแล้ว!")
                 wait(3)
@@ -1519,10 +1651,10 @@ spawn(function()
     end
 end)
 
--- =================== Auto Light Attack Loop ===================
+-- =================== Auto Light Attack Loop (Paused Support) ===================
 spawn(function()
     while programRunning do
-        if state.autoAttack then
+        if state.autoAttack and not combatPaused then  -- เช็ค combatPaused
             local char = getChar()
             local event = char:FindFirstChild("PlayerHandler") and char.PlayerHandler:FindFirstChild("HandlerEvent")
             if event then
@@ -1542,10 +1674,10 @@ spawn(function()
     end
 end)
 
--- =================== Auto Heavy Attack Loop ===================
+-- =================== Auto Heavy Attack Loop (Paused Support) ===================
 spawn(function()
     while programRunning do
-        if state.autoHeavyAttack then
+        if state.autoHeavyAttack and not combatPaused then  -- เช็ค combatPaused
             local char = getChar()
             local event = char:FindFirstChild("PlayerHandler") and char.PlayerHandler:FindFirstChild("HandlerEvent")
             if event then
@@ -1561,11 +1693,11 @@ spawn(function()
                 pcall(function() event:FireServer(unpack(args)) end)
             end
         end
-        wait(1)
+        wait(0.5)
     end
 end)
 
--- =================== Auto Skills Loop ===================
+-- =================== Auto Skills Loop (Paused Support) ===================
 local skills = {
     {Key="E", Pos=CFrame.new(-1345.676,38.287,-55.023,1,0,0,0,1,0,0,0,1)},
     {Key="R", Pos=CFrame.new(-1345.676,38.287,-55.023,1,0,0,0,1,0,0,0,1)},
@@ -1576,7 +1708,7 @@ local skills = {
 for _, skill in ipairs(skills) do
     spawn(function()
         while programRunning do
-            if state.autoSkills[skill.Key] then
+            if state.autoSkills[skill.Key] and not combatPaused then  -- เช็ค combatPaused
                 local char = getChar()
                 local event = char:FindFirstChild("PlayerHandler") and char.PlayerHandler:FindFirstChild("HandlerEvent")
                 if event then
@@ -1595,20 +1727,48 @@ for _, skill in ipairs(skills) do
     end)
 end
 
--- =================== Auto Press X Loop ===================
+-- =================== Auto Press X Loop (Fixed v3.1) ===================
 spawn(function()
     while programRunning do
-        if state.autoKeyX then
+        if state.autoKeyX and not combatPaused then  -- ⬅️ แก้ตรงนี้
             pcall(function()
-                vu:CaptureController()
-                vu:SetKeyDown("x")
-                task.wait(0.05)
-                vu:SetKeyUp("x")
+                local character = getChar()
+                if character and character:FindFirstChild("PlayerHandler") then
+                    local handlerEvent = character.PlayerHandler:FindFirstChild("HandlerEvent")
+                    if handlerEvent then
+                        local mouse = player:GetMouse()
+                        local mousePos = mouse.Hit
+                        
+                        local forms = {
+                            "Survive Bat",
+                            "Survive Cobra", 
+                            "Survive Dragon"
+                        }
+                        
+                        for _, formName in ipairs(forms) do
+                            local args = {
+                                {
+                                    Skill = true,
+                                    FormHenshin = formName,
+                                    Key = "X",
+                                    MouseData = mousePos
+                                }
+                            }
+                            handlerEvent:FireServer(unpack(args))
+                            wait(0.1)
+                        end
+                        
+                        game:GetService("VirtualUser"):SetKeyDown("x")
+                        wait(0.1)
+                        game:GetService("VirtualUser"):SetKeyUp("x")
+                    end
+                end
             end)
         end
-        task.wait(0.15)
+        wait(0.5)
     end
 end)
+
 
 -- =================== AFK Loop ===================
 spawn(function()
@@ -2358,7 +2518,7 @@ questLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     questContent.CanvasSize = UDim2.new(0, 0, 0, questLayout.AbsoluteContentSize.Y + 20)
 end)
 
--- Event Tab
+-- Event Tab (ไม่มี Currency Crate)
 local eventTitle = Instance.new("TextLabel", eventContent)
 eventTitle.Size = UDim2.new(1, 0, 0, 30)
 eventTitle.BackgroundTransparency = 1
@@ -2607,4 +2767,3 @@ end)
 btnNo.MouseButton1Click:Connect(function()
     confirmFrame.Visible = false
 end)
-
